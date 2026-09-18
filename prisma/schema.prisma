@@ -1,0 +1,176 @@
+// Database schema.
+//
+// Numeric choices: every body metric is stored as `Decimal`, not `Float`.
+// These are values a user reads off a scale and compares over time, so binary
+// floating point rounding would be visible and wrong. `visceralFat` and
+// `suggestedKcal` are whole numbers as scales report them.
+//
+// BMI is deliberately absent: it is derived from `weightKg` and
+// `heightCmAtMeasurement`. See CLAUDE.md.
+
+generator client {
+  provider = "prisma-client-js"
+  // `native` resolves at generate time, so an amd64 development machine and an
+  // arm64 Raspberry Pi each get the right query engine from their own build.
+  binaryTargets = ["native"]
+}
+
+datasource db {
+  provider = "postgresql"
+  // The connection URL lives in prisma.config.ts (migrations) and in the
+  // driver adapter in src/lib/db.ts (runtime). Prisma 7 no longer accepts it
+  // here.
+}
+
+// ---------------------------------------------------------------------------
+// Authentication
+//
+// User, Session, Account and Verification are better-auth's schema. Their
+// shape is dictated by the library - do not rename or drop fields without
+// re-running `@better-auth/cli generate`.
+//
+// Ids here are strings rather than `@db.Uuid` because better-auth generates
+// them itself, and they are not UUIDs. Rows we own (Profile, Measurement) keep
+// their own UUID primary keys but must use a plain string for the foreign key.
+// ---------------------------------------------------------------------------
+
+model User {
+  id String @id
+
+  email String @unique
+  /// Required by better-auth. The product's optional display name lives on
+  /// Profile; this is written as an empty string at registration.
+  name  String
+
+  /// Always false for now - email verification is a later phase.
+  emailVerified Boolean @default(false)
+  image         String?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  sessions Session[]
+  accounts Account[]
+
+  profile      Profile?
+  measurements Measurement[]
+}
+
+model Session {
+  id        String   @id
+  token     String   @unique
+  expiresAt DateTime @db.Timestamptz(3)
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Credentials. For email + password sign-in `password` holds better-auth's
+/// scrypt hash - never a plaintext password.
+model Account {
+  id        String @id
+  accountId String
+  providerId String
+
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime? @db.Timestamptz(3)
+  refreshTokenExpiresAt DateTime? @db.Timestamptz(3)
+  scope                 String?
+  password              String?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Short-lived tokens. Unused while email verification and password reset are
+/// out of scope, but better-auth requires the table.
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([identifier])
+}
+
+// ---------------------------------------------------------------------------
+// Application data
+// ---------------------------------------------------------------------------
+
+enum Sex {
+  FEMALE
+  MALE
+  OTHER
+}
+
+/// Supported interface languages. Adding one is additive: extend this enum and
+/// the translation catalogue.
+enum Language {
+  EN
+  PT
+}
+
+model Profile {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @unique
+
+  name      String?
+  birthDate DateTime @db.Date
+  sex       Sex
+  /// The user's *current* height. Measurements keep their own copy, so
+  /// changing this never alters historical BMI.
+  heightCm  Decimal  @db.Decimal(5, 1)
+  language  Language
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Measurement {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String
+
+  measuredAt DateTime @db.Timestamptz(3)
+
+  // All optional, but the application layer requires at least one of them to
+  // be present. See src/lib/measurements/validation.ts.
+  weightKg         Decimal? @db.Decimal(5, 2)
+  bodyFatPercent   Decimal? @db.Decimal(4, 1)
+  hydrationPercent Decimal? @db.Decimal(4, 1)
+  musclePercent    Decimal? @db.Decimal(4, 1)
+  boneMassKg       Decimal? @db.Decimal(4, 2)
+  visceralFat      Int?
+  suggestedKcal    Int?
+
+  /// Height at the time of the measurement. Never updated afterwards - this is
+  /// what keeps historical BMI stable when the profile height changes.
+  heightCmAtMeasurement Decimal @db.Decimal(5, 1)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Every read is scoped by userId and ordered by measuredAt; this composite
+  // index serves both, and the leading column keeps per-user lookups cheap.
+  @@index([userId, measuredAt])
+}

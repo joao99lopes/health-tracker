@@ -1,0 +1,93 @@
+# Production stack. This file alone is what runs on the Raspberry Pi.
+#
+# Build it on the machine that runs it: the node and postgres images are
+# published for linux/amd64 and linux/arm64, so a `docker compose build` on the
+# Pi produces a native arm64 image with no emulation.
+#
+# Nothing here publishes a database port. Development needs one, so it lives in
+# docker-compose.dev.yml and is opted into explicitly:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db
+#
+# That file is never loaded implicitly - it is not named `override`, so a plain
+# `docker compose up` on the Pi cannot pick it up by accident.
+services:
+  db:
+    image: postgres:17-alpine # multi-arch: works on amd64 (dev) and arm64 (Pi)
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-health}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-health_tracker}
+    # No `ports`. In production nothing outside the compose network needs to
+    # reach PostgreSQL: `app` and `migrate` resolve it by service name. See
+    # docker-compose.dev.yml for the development port.
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-health} -d ${POSTGRES_DB:-health_tracker}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # One-shot: applies pending migrations, then exits. Uses the builder stage
+  # because that is where the Prisma CLI and its dependencies live.
+  migrate:
+    build:
+      context: .
+      target: builder
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-health}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-health_tracker}
+    command: node node_modules/prisma/build/index.js migrate deploy
+
+  # Daily gzipped pg_dump into a host directory, pruned by age. Same image as
+  # `db`, so pg_dump matches the server version exactly and the service is
+  # multi-arch for free. It talks to `db` over the compose network and
+  # publishes nothing.
+  backup:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-health}
+      POSTGRES_DB: ${POSTGRES_DB:-health_tracker}
+      # pg_dump reads the password from here; it never appears on a command
+      # line, where it would be visible in `ps`.
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+    volumes:
+      # Host directory holding the dumps. Keep it on storage that is not the
+      # SD card if you can - see README.md.
+      - ${BACKUP_DIR:-./backups}:/backups
+      - ./scripts/backup.sh:/usr/local/bin/backup.sh:ro
+    command: ["/bin/sh", "/usr/local/bin/backup.sh"]
+
+  app:
+    build:
+      context: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      # Inside the compose network the database is reached by service name.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-health}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-health_tracker}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env}
+      # Must be the origin users actually type - on the Pi the LAN address,
+      # e.g. http://192.168.1.50:3000. No default: a silent fallback to
+      # localhost would reject every sign-in as cross-origin.
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?set BETTER_AUTH_URL in .env}
+    # The only service published beyond the host. LAN only for now.
+    ports:
+      - "3000:3000"
+
+volumes:
+  db_data:

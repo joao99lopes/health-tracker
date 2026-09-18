@@ -1,0 +1,45 @@
+import { Dashboard } from "@/components/dashboard/dashboard";
+import { AddMeasurementFab } from "@/components/measurements/add-measurement-fab";
+import { ProfileRequiredCard } from "@/components/measurements/profile-required-card";
+import { PageHeader } from "@/components/page-header";
+import { requireUser } from "@/lib/auth/session";
+import { getTranslations } from "@/lib/i18n/server";
+import { listMeasurements } from "@/lib/measurements/queries";
+import { getProfile } from "@/lib/profile/queries";
+
+/**
+ * The page a signed-in user lands on.
+ *
+ * Navigation to Measurements and Profile, and signing out, live in the app
+ * shell around this page.
+ */
+export default async function DashboardPage() {
+  // Authoritative check, and the only id the queries below are scoped by.
+  const user = await requireUser();
+  const [measurements, profile, { t }] = await Promise.all([
+    listMeasurements(user.id),
+    getProfile(user.id),
+    getTranslations(),
+  ]);
+
+  return (
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        title={t.dashboard.title}
+        description={t.dashboard.description}
+      />
+
+      {profile === null && <ProfileRequiredCard />}
+
+      <Dashboard
+        measurements={measurements}
+        birthDate={profile?.birthDate ?? null}
+        // One instant for the whole request: the period filter then means the
+        // same thing on the server and after hydration.
+        now={new Date()}
+      />
+
+      {profile !== null && <AddMeasurementFab />}
+    </div>
+  );
+}

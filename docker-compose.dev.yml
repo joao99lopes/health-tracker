@@ -1,0 +1,18 @@
+# Development-only additions, layered on top of docker-compose.yml:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db
+#
+# The name matters. Docker Compose loads `docker-compose.override.yml`
+# automatically, so calling this file that would silently apply it on the
+# Raspberry Pi too. Named this way it only ever applies when asked for by -f.
+#
+# Only the `db` service is extended. Development does not build or run the
+# `app` service - `npm run dev` serves the application from the host and
+# connects to the port below.
+services:
+  db:
+    # Development runs the app outside the compose network, so it needs a way
+    # in. Bound to 127.0.0.1 so it is reachable from this machine only and
+    # never from the LAN.
+    ports:
+      - "127.0.0.1:5432:5432"
