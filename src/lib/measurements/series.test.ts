@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { MeasurementSnapshot } from "./metrics.ts";
-import { buildMetricSeries, hasEnoughPoints } from "./series.ts";
+import { buildMetricSeries, hasAnyPoints, hasEnoughPoints } from "./series.ts";
 
 const NOW = new Date("2026-09-18T12:00:00.000Z");
 
@@ -149,10 +149,11 @@ test("an empty period has no points, no ends and no domain", () => {
   assert.equal(series.previous, null);
   assert.equal(series.first, null);
   assert.equal(series.domain, null);
+  assert.equal(hasAnyPoints(series), false);
   assert.equal(hasEnoughPoints(series), false);
 });
 
-test("a single point is not enough to plot, and still reports its value", () => {
+test("a single point is drawable, but is not an evolution", () => {
   const series = buildMetricSeries(
     [snapshot("2026-09-18T08:00:00.000Z", { weightKg: 78 })],
     "weightKg",
@@ -160,7 +161,9 @@ test("a single point is not enough to plot, and still reports its value", () => 
     NOW,
   );
 
+  assert.equal(hasAnyPoints(series), true);
   assert.equal(hasEnoughPoints(series), false);
+  assert.equal(series.domain !== null, true);
   assert.equal(series.current?.value, 78);
   assert.equal(series.previous, null);
   assert.equal(series.first?.value, 78);

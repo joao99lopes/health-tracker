@@ -2,8 +2,8 @@
 //
 // Numeric choices: every body metric is stored as `Decimal`, not `Float`.
 // These are values a user reads off a scale and compares over time, so binary
-// floating point rounding would be visible and wrong. `visceralFat` and
-// `suggestedKcal` are whole numbers as scales report them.
+// floating point rounding would be visible and wrong. `visceralFat` is a
+// whole number as scales report it.
 //
 // BMI is deliberately absent: it is derived from `weightKg` and
 // `heightCmAtMeasurement`. See CLAUDE.md.
@@ -159,7 +159,6 @@ model Measurement {
   musclePercent    Decimal? @db.Decimal(4, 1)
   boneMassKg       Decimal? @db.Decimal(4, 2)
   visceralFat      Int?
-  suggestedKcal    Int?
 
   /// Height at the time of the measurement. Never updated afterwards - this is
   /// what keeps historical BMI stable when the profile height changes.

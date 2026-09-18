@@ -51,6 +51,16 @@ const LONG_PERIODS: readonly PeriodKey[] = ["1y", "2y", "all"];
 /** Above this many readings the dots merge into the line; drop them. */
 const MAX_DOTS = 24;
 
+/**
+ * Half the width of the time window drawn around a lone reading.
+ *
+ * `["dataMin", "dataMax"]` collapses to a zero-width domain when there is a
+ * single point, and Recharts then has nowhere to place it. Widening the axis
+ * by half a day either side gives the dot a position without inventing a
+ * second reading.
+ */
+const SINGLE_POINT_PADDING_MS = 12 * 60 * 60 * 1000;
+
 /** One height, used by the chart and by the box that stands in for it. */
 const CHART_HEIGHT = "h-60 w-full sm:h-72 lg:h-80";
 
@@ -90,6 +100,14 @@ export function MetricChart({ series }: { series: MetricSeries }) {
   const gradientId = useId();
 
   const withYear = LONG_PERIODS.includes(series.period);
+  const only = series.points.length === 1 ? series.points[0] : undefined;
+  const xDomain: [number, number] | [string, string] =
+    only === undefined
+      ? ["dataMin", "dataMax"]
+      : [
+          only.time - SINGLE_POINT_PADDING_MS,
+          only.time + SINGLE_POINT_PADDING_MS,
+        ];
 
   if (!hydrated) {
     return <div className={CHART_HEIGHT} aria-hidden />;
@@ -121,7 +139,7 @@ export function MetricChart({ series }: { series: MetricSeries }) {
             dataKey="time"
             type="number"
             scale="time"
-            domain={["dataMin", "dataMax"]}
+            domain={xDomain}
             tickFormatter={(time: number) =>
               formatAxisDate(new Date(time), language, withYear)
             }

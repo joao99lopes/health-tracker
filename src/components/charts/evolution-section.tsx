@@ -22,6 +22,7 @@ import { METRICS, isMetric, type Metric } from "@/lib/measurements/metrics";
 import type { Measurement } from "@/lib/measurements/queries";
 import {
   buildMetricSeries,
+  hasAnyPoints,
   hasEnoughPoints,
   type SeriesPoint,
 } from "@/lib/measurements/series";
@@ -180,14 +181,23 @@ export function EvolutionSection({
             </div>
           )}
 
-          {hasEnoughPoints(series) ? (
-            <MetricChart series={series} />
+          {hasAnyPoints(series) ? (
+            <>
+              <MetricChart series={series} />
+              {/* One reading is worth drawing, but it is not an evolution.
+                  Say which of the two this is. */}
+              {!hasEnoughPoints(series) && (
+                <p className="text-muted-foreground text-xs">
+                  {t.charts.singlePoint}
+                </p>
+              )}
+            </>
           ) : (
             <EmptyState
               bordered
               icon={LineChartIcon}
-              title={t.charts.notEnoughData}
-              description={t.charts.notEnoughDataDescription}
+              title={t.charts.noData}
+              description={t.charts.noDataDescription}
               className="h-60 sm:h-72 lg:h-80"
             />
           )}

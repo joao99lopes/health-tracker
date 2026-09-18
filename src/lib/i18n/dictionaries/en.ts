@@ -60,7 +60,6 @@ export const en = {
     latest: "Latest measurement",
     latestValues: "Current values",
     fromEarlier: (when: string) => `From ${when}`,
-    vsPrevious: "Latest vs previous",
     vsFirst: "Latest vs first",
     vsPeriod: "Over a period",
     comparedWith: (when: string) => `Compared with ${when}`,
@@ -85,9 +84,11 @@ export const en = {
     description: "One metric over time. Only recorded values are plotted.",
     metric: "Metric",
     period: "Period",
-    notEnoughData: "Not enough data yet.",
-    notEnoughDataDescription:
-      "Two recorded values are needed to show this metric over the selected period.",
+    noData: "Not enough data yet.",
+    noDataDescription:
+      "This metric has no recorded value in the selected period.",
+    singlePoint:
+      "One recorded value in this period. A second one is needed to show a change.",
     current: "Current",
     previous: "Previous",
     first: "First",
@@ -202,7 +203,6 @@ export const en = {
       musclePercent: "Muscle (%)",
       boneMassKg: "Bone mass (kg)",
       visceralFat: "Visceral fat",
-      suggestedKcal: "Suggested kcal",
     },
     bmiCategories: {
       UNDERWEIGHT: "Underweight",

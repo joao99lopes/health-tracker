@@ -11,7 +11,6 @@ import { parseMeasurementInput } from "./validation.ts";
 test("a blank form has no values", () => {
   const values = emptyFormValues();
   assert.equal(values.weightKg, "");
-  assert.equal(values.suggestedKcal, "");
 });
 
 test("an existing measurement becomes editable text", () => {

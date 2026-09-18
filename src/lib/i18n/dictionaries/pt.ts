@@ -60,7 +60,6 @@ export const pt: Dictionary = {
     latest: "Última medição",
     latestValues: "Valores atuais",
     fromEarlier: (when: string) => `De ${when}`,
-    vsPrevious: "Última vs anterior",
     vsFirst: "Última vs primeira",
     vsPeriod: "Ao longo de um período",
     comparedWith: (when: string) => `Comparada com ${when}`,
@@ -86,9 +85,11 @@ export const pt: Dictionary = {
       "Uma métrica ao longo do tempo. Só são representados valores registados.",
     metric: "Métrica",
     period: "Período",
-    notEnoughData: "Ainda não há dados suficientes.",
-    notEnoughDataDescription:
-      "São precisos dois valores registados para mostrar esta métrica no período selecionado.",
+    noData: "Ainda não há dados suficientes.",
+    noDataDescription:
+      "Esta métrica não tem qualquer valor registado no período selecionado.",
+    singlePoint:
+      "Um valor registado neste período. É preciso um segundo para mostrar uma variação.",
     current: "Atual",
     previous: "Anterior",
     first: "Primeiro",
@@ -201,7 +202,6 @@ export const pt: Dictionary = {
       musclePercent: "Músculo (%)",
       boneMassKg: "Massa óssea (kg)",
       visceralFat: "Gordura visceral",
-      suggestedKcal: "Kcal sugeridas",
     },
     bmiCategories: {
       UNDERWEIGHT: "Baixo peso",

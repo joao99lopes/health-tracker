@@ -65,7 +65,6 @@ function input(overrides: Partial<MeasurementInput> = {}): MeasurementInput {
     musclePercent: "",
     boneMassKg: "",
     visceralFat: "",
-    suggestedKcal: "",
     ...overrides,
   };
 }

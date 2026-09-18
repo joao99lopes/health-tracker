@@ -109,7 +109,18 @@ export function buildMetricSeries(
   };
 }
 
-/** Whether there is enough of a series to plot rather than to apologise for. */
+/** Whether there is anything at all to draw: one reading is already a point. */
+export function hasAnyPoints(series: MetricSeries): boolean {
+  return series.points.length > 0;
+}
+
+/**
+ * Whether the series says anything about evolution.
+ *
+ * A single reading is still drawn - it is data the user recorded - but there
+ * is no movement to read out of it, so the section says so rather than
+ * implying a trend.
+ */
 export function hasEnoughPoints(series: MetricSeries): boolean {
   return series.points.length >= MIN_SERIES_POINTS;
 }

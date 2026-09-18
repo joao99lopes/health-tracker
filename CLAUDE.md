@@ -64,7 +64,6 @@ Fields:
 - `muscle_percent`
 - `bone_mass_kg`
 - `visceral_fat`
-- `suggested_kcal`
 - `height_cm_at_measurement`
 
 All values except the date/time are optional, but **at least one actual
@@ -220,7 +219,7 @@ enforce that for you.
 never updated, which is what keeps historical BMI stable when a user's current
 height changes.
 
-**At least one value.** A measurement's seven value fields are all nullable in
+**At least one value.** A measurement's six value fields are all nullable in
 the database; the rule that at least one must be present lives in
 `src/lib/measurements/validation.ts` and is shared by server and client. The
 field list itself is defined once in `src/lib/measurements/fields.ts`.

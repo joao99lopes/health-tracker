@@ -15,7 +15,6 @@ export const MEASUREMENT_VALUE_FIELDS = [
   "musclePercent",
   "boneMassKg",
   "visceralFat",
-  "suggestedKcal",
 ] as const;
 
 export type MeasurementValueField = (typeof MEASUREMENT_VALUE_FIELDS)[number];
@@ -36,7 +35,7 @@ export type MeasurementValues = {
  */
 export type MeasurementFieldSpec = {
   /** Which unit suffix to present the value with. */
-  unit: "kg" | "%" | "kcal" | "none";
+  unit: "kg" | "%" | "none";
   decimals: number;
   min: number;
   max: number;
@@ -56,8 +55,6 @@ export const MEASUREMENT_FIELD_SPECS: Record<
   boneMassKg: { unit: "kg", decimals: 2, min: 0, max: 20 },
   // Int: a unitless index as consumer scales report it.
   visceralFat: { unit: "none", decimals: 0, min: 0, max: 60 },
-  // Int: kilocalories per day.
-  suggestedKcal: { unit: "kcal", decimals: 0, min: 0, max: 20000 },
 };
 
 /**

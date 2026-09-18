@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRightIcon, LineChartIcon } from "lucide-react";
+import {
+  ArrowDownIcon,
+  ArrowRightIcon,
+  ArrowUpIcon,
+  LineChartIcon,
+  MinusIcon,
+} from "lucide-react";
 import { EvolutionSection } from "@/components/charts/evolution-section";
 import { ComparisonCard } from "@/components/dashboard/comparison-card";
 import { PeriodComparisonCard } from "@/components/dashboard/period-comparison-card";
@@ -19,11 +25,16 @@ import { useI18n } from "@/lib/i18n/context";
 import {
   compareLatestToFirst,
   compareLatestToPrevious,
+  type MetricComparison,
 } from "@/lib/measurements/comparison";
-import { formatDate, formatMetricValue } from "@/lib/measurements/format";
+import {
+  formatDate,
+  formatMetricDelta,
+  formatMetricValue,
+} from "@/lib/measurements/format";
 import { metricLabel } from "@/lib/measurements/messages";
 import type { Measurement } from "@/lib/measurements/queries";
-import { metricValue } from "@/lib/measurements/metrics";
+import { metricValue, type Metric } from "@/lib/measurements/metrics";
 import {
   latestMeasurement,
   latestMetricReadings,
@@ -38,6 +49,11 @@ import {
  * an invitation to record something, and this page reports rather than
  * suggests. A value carried over from an older measurement says which day it
  * came from, so nothing on the page claims to be more recent than it is.
+ *
+ * Each card carries its own change against the previous measurement, where
+ * both measurements recorded that metric. Where they did not, the card shows
+ * the value alone: a difference against something that was never measured
+ * would be an invention.
  *
  * BMI comes from the weight and the height stored with each measurement, so
  * it is stable, and its WHO band is shown only where those cut-off points
@@ -56,9 +72,38 @@ function partitionReadings(readings: MetricReading[]): {
   };
 }
 
-function MetricCard({ reading }: { reading: MetricReading }) {
+const DIRECTION_ICONS = {
+  up: ArrowUpIcon,
+  down: ArrowDownIcon,
+  same: MinusIcon,
+} as const;
+
+/**
+ * The change against the previous measurement, per metric.
+ *
+ * Only the metrics both measurements recorded are in the map, so a card that
+ * finds nothing here simply has nothing to compare with.
+ */
+function previousChanges(
+  measurements: readonly Measurement[],
+): Map<Metric, MetricComparison> {
+  const comparison = compareLatestToPrevious(measurements);
+  return new Map(
+    (comparison?.metrics ?? []).map((metric) => [metric.metric, metric]),
+  );
+}
+
+function MetricCard({
+  reading,
+  change,
+}: {
+  reading: MetricReading;
+  /** Against the previous measurement, or null when there is none. */
+  change: MetricComparison | null;
+}) {
   const { t, language } = useI18n();
   const hydrated = useHydrated();
+  const DirectionIcon = change === null ? null : DIRECTION_ICONS[change.direction];
 
   return (
     <Card size="sm" className="justify-between">
@@ -69,6 +114,16 @@ function MetricCard({ reading }: { reading: MetricReading }) {
         <p className="text-xl font-semibold tabular-nums sm:text-2xl">
           {formatMetricValue(reading.metric, reading.value, language)}
         </p>
+        {/* The arrow states which way the number moved and nothing else: no
+            change here is coloured as good or bad. */}
+        {change !== null && DirectionIcon !== null && (
+          <p className="text-muted-foreground flex items-center gap-1 text-xs tabular-nums">
+            <DirectionIcon className="size-3.5 shrink-0" aria-hidden />
+            <span>
+              {formatMetricDelta(change.metric, change.delta, language)}
+            </span>
+          </p>
+        )}
         {/* Carried over from an older measurement: say so rather than let it
             pass as part of the latest one. */}
         {!reading.current && (
@@ -116,6 +171,7 @@ export function Dashboard({
   }
 
   const { bmi, values } = partitionReadings(latestMetricReadings(measurements));
+  const changes = previousChanges(measurements);
   // The band applied at the time of the measurement, from the age then.
   const category = isAdultBmiApplicable(
     ageInYears(birthDate, latest.measuredAt),
@@ -162,7 +218,11 @@ export function Dashboard({
           </h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {values.map((reading) => (
-              <MetricCard key={reading.metric} reading={reading} />
+              <MetricCard
+                key={reading.metric}
+                reading={reading}
+                change={changes.get(reading.metric) ?? null}
+              />
             ))}
           </div>
         </section>
@@ -171,10 +231,6 @@ export function Dashboard({
       <EvolutionSection measurements={measurements} now={now} />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <ComparisonCard
-          title={t.dashboard.vsPrevious}
-          comparison={compareLatestToPrevious(measurements)}
-        />
         <ComparisonCard
           title={t.dashboard.vsFirst}
           comparison={compareLatestToFirst(measurements)}

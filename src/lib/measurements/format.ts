@@ -23,7 +23,6 @@ import type { Metric } from "@/lib/measurements/metrics";
 const UNIT_SUFFIX: Record<string, string> = {
   kg: " kg",
   "%": "%",
-  kcal: " kcal",
   none: "",
 };
 

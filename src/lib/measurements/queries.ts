@@ -46,7 +46,6 @@ function toMeasurement(row: MeasurementRow): Measurement {
     musclePercent: toNumber(row.musclePercent),
     boneMassKg: toNumber(row.boneMassKg),
     visceralFat: row.visceralFat,
-    suggestedKcal: row.suggestedKcal,
   };
 }
 
