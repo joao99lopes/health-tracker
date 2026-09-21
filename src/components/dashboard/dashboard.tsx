@@ -36,6 +36,12 @@ import { metricLabel } from "@/lib/measurements/messages";
 import type { Measurement } from "@/lib/measurements/queries";
 import { metricValue, type Metric } from "@/lib/measurements/metrics";
 import {
+  changeTone,
+  type DirectionPreferences,
+} from "@/lib/preferences/direction";
+import { TONE_TEXT_CLASS } from "@/components/tone";
+import { cn } from "@/lib/utils";
+import {
   latestMeasurement,
   latestMetricReadings,
   type MetricReading,
@@ -53,7 +59,13 @@ import {
  * Each card carries its own change against the previous measurement, where
  * both measurements recorded that metric. Where they did not, the card shows
  * the value alone: a difference against something that was never measured
- * would be an invention.
+ * would be an invention. Comparison availability is therefore per metric, not
+ * per card set.
+ *
+ * Where the reader has said which way they would like a metric to move, that
+ * change is tinted as with or against what they asked for. It is a
+ * presentation preference and no more: the arrow and the number carry the
+ * meaning on their own, and no value is called good or bad.
  *
  * BMI comes from the weight and the height stored with each measurement, so
  * it is stable, and its WHO band is shown only where those cut-off points
@@ -96,14 +108,21 @@ function previousChanges(
 function MetricCard({
   reading,
   change,
+  direction,
 }: {
   reading: MetricReading;
   /** Against the previous measurement, or null when there is none. */
   change: MetricComparison | null;
+  /** The reader's preference for this metric; presentation only. */
+  direction: DirectionPreferences[Metric];
 }) {
   const { t, language } = useI18n();
   const hydrated = useHydrated();
   const DirectionIcon = change === null ? null : DIRECTION_ICONS[change.direction];
+  const tone =
+    change === null
+      ? TONE_TEXT_CLASS.neutral
+      : TONE_TEXT_CLASS[changeTone(direction, change.direction)];
 
   return (
     <Card size="sm" className="justify-between">
@@ -114,10 +133,17 @@ function MetricCard({
         <p className="text-xl font-semibold tabular-nums sm:text-2xl">
           {formatMetricValue(reading.metric, reading.value, language)}
         </p>
-        {/* The arrow states which way the number moved and nothing else: no
-            change here is coloured as good or bad. */}
+        {/* The arrow and the number carry the change; the tint only says
+            whether it went the way the reader asked for. Where there is no
+            previous value for this metric there is no difference to show -
+            never a zero standing in for one. */}
         {change !== null && DirectionIcon !== null && (
-          <p className="text-muted-foreground flex items-center gap-1 text-xs tabular-nums">
+          <p
+            className={cn(
+              "flex items-center gap-1 text-xs tabular-nums",
+              tone,
+            )}
+          >
             <DirectionIcon className="size-3.5 shrink-0" aria-hidden />
             <span>
               {formatMetricDelta(change.metric, change.delta, language)}
@@ -145,11 +171,17 @@ function MetricCard({
 export function Dashboard({
   measurements,
   birthDate,
+  directions,
   now,
 }: {
   measurements: Measurement[];
   /** From the profile, for the age the WHO BMI bands are defined against. */
   birthDate: string | null;
+  /**
+   * The reader's direction preference per metric. Presentation only: it
+   * changes how a change is coloured and nothing that is stored or computed.
+   */
+  directions: DirectionPreferences;
   /** Fixed by the server for this request, so period filtering is stable. */
   now: Date;
 }) {
@@ -222,21 +254,31 @@ export function Dashboard({
                 key={reading.metric}
                 reading={reading}
                 change={changes.get(reading.metric) ?? null}
+                direction={directions[reading.metric]}
               />
             ))}
           </div>
         </section>
       )}
 
-      <EvolutionSection measurements={measurements} now={now} />
+      <EvolutionSection
+        measurements={measurements}
+        directions={directions}
+        now={now}
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <ComparisonCard
           title={t.dashboard.vsFirst}
           comparison={compareLatestToFirst(measurements)}
+          directions={directions}
         />
         {/* The third comparison: both ends of a period the reader picks. */}
-        <PeriodComparisonCard measurements={measurements} now={now} />
+        <PeriodComparisonCard
+          measurements={measurements}
+          directions={directions}
+          now={now}
+        />
       </div>
 
       <Button asChild variant="outline" className="self-start">

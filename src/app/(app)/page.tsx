@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth/session";
 import { getTranslations } from "@/lib/i18n/server";
 import { listMeasurements } from "@/lib/measurements/queries";
+import { DEFAULT_DIRECTION_PREFERENCES } from "@/lib/preferences/direction";
 import { getProfile } from "@/lib/profile/queries";
 
 /**
@@ -34,6 +35,9 @@ export default async function DashboardPage() {
       <Dashboard
         measurements={measurements}
         birthDate={profile?.birthDate ?? null}
+        // Presentation only. Without a profile nobody has stated a
+        // preference, so the page reads exactly as it did before.
+        directions={profile?.directions ?? DEFAULT_DIRECTION_PREFERENCES}
         // One instant for the whole request: the period filter then means the
         // same thing on the server and after hydration.
         now={new Date()}

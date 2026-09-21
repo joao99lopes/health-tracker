@@ -20,6 +20,12 @@ import {
   formatPercentChange,
 } from "@/lib/measurements/format";
 import { metricLabel } from "@/lib/measurements/messages";
+import {
+  changeTone,
+  type DirectionPreferences,
+} from "@/lib/preferences/direction";
+import { TONE_TEXT_CLASS } from "@/components/tone";
+import { cn } from "@/lib/utils";
 
 /**
  * One comparison between two measurements, metric by metric.
@@ -28,8 +34,11 @@ import { metricLabel } from "@/lib/measurements/messages";
  * that was never recorded is not a difference. When there is no second
  * measurement to compare with, the card says so instead of drawing zeroes.
  *
- * The arrow states which way the number moved and nothing else. No change is
- * coloured as good or bad, and nothing here suggests what to do about it.
+ * The arrow states which way the number moved, and the number says how far.
+ * Where the reader has said which way they would like a metric to go, the two
+ * are tinted as with or against that - a presentation preference, not a
+ * judgement of the value. With no preference stated the row is neutral, as it
+ * was before. Nothing here suggests what to do about any of it.
  */
 
 const DIRECTION_ICONS = {
@@ -41,10 +50,13 @@ const DIRECTION_ICONS = {
 export function ComparisonCard({
   title,
   comparison,
+  directions,
   action,
 }: {
   title: string;
   comparison: MeasurementComparison | null;
+  /** The reader's direction preference per metric; presentation only. */
+  directions: DirectionPreferences;
   /** Optional control in the header, such as the period picker. */
   action?: ReactNode;
 }) {
@@ -89,6 +101,9 @@ export function ComparisonCard({
           {comparison.metrics.map((metric) => {
             const Icon = DIRECTION_ICONS[metric.direction];
             const percent = formatPercentChange(metric.percentChange, language);
+            const tone = TONE_TEXT_CLASS[
+              changeTone(directions[metric.metric], metric.direction)
+            ];
             return (
               <li
                 key={metric.metric}
@@ -110,11 +125,13 @@ export function ComparisonCard({
                       {percent}
                     </span>
                   )}
-                  <span className="bg-muted flex items-center gap-1 rounded-full px-2 py-1 text-sm font-medium tabular-nums">
-                    <Icon
-                      className="text-muted-foreground size-3.5"
-                      aria-hidden
-                    />
+                  <span
+                    className={cn(
+                      "bg-muted flex items-center gap-1 rounded-full px-2 py-1 text-sm font-medium tabular-nums",
+                      tone,
+                    )}
+                  >
+                    <Icon className="size-3.5" aria-hidden />
                     {formatMetricDelta(metric.metric, metric.delta, language)}
                   </span>
                 </div>

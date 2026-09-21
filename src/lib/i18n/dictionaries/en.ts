@@ -136,6 +136,16 @@ export const en = {
     heightCm: "Height (cm)",
     heightHint: "Applies to new measurements only.",
     language: "Language",
+    directions: {
+      title: "Direction preferences",
+      hint: "Only affects how changes are displayed. No goals, no targets.",
+      legend: (metric: string) => `Preferred direction for ${metric}`,
+      values: {
+        decrease: "Down",
+        indifferent: "No preference",
+        increase: "Up",
+      },
+    },
     saved: "Profile saved.",
     failed: "Could not save the profile. Please try again.",
     sexes: {
@@ -156,6 +166,7 @@ export const en = {
       HEIGHT_OUT_OF_RANGE: (min: number, max: number) =>
         `Enter a height between ${min} and ${max} cm.`,
       LANGUAGE_INVALID: "Select a language.",
+      DIRECTION_INVALID: "Select one of the available directions.",
     },
   },
 

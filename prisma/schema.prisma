@@ -127,6 +127,15 @@ enum Language {
   PT
 }
 
+/// Which way the user would like a metric to move. A presentation preference
+/// only: it carries no target and no recommendation, and nothing derived from
+/// it is stored. See src/lib/preferences/direction.ts.
+enum MetricDirection {
+  DECREASE
+  INDIFFERENT
+  INCREASE
+}
+
 model Profile {
   id     String @id @default(uuid()) @db.Uuid
   userId String @unique
@@ -138,6 +147,16 @@ model Profile {
   /// changing this never alters historical BMI.
   heightCm  Decimal  @db.Decimal(5, 1)
   language  Language
+
+  /// Direction preferences, one per metric, including the derived BMI. Only
+  /// the current value is kept - no history of preference changes.
+  weightKgDirection         MetricDirection @default(INDIFFERENT)
+  bodyFatPercentDirection   MetricDirection @default(INDIFFERENT)
+  hydrationPercentDirection MetricDirection @default(INDIFFERENT)
+  musclePercentDirection    MetricDirection @default(INDIFFERENT)
+  boneMassKgDirection       MetricDirection @default(INDIFFERENT)
+  visceralFatDirection      MetricDirection @default(INDIFFERENT)
+  bmiDirection              MetricDirection @default(INDIFFERENT)
 
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)

@@ -20,6 +20,7 @@ import { formatMetricValue } from "@/lib/measurements/format";
 import { metricLabel } from "@/lib/measurements/messages";
 import { METRICS, isMetric, type Metric } from "@/lib/measurements/metrics";
 import type { Measurement } from "@/lib/measurements/queries";
+import type { DirectionPreferences } from "@/lib/preferences/direction";
 import {
   buildMetricSeries,
   hasAnyPoints,
@@ -77,9 +78,12 @@ function Reading({
 
 export function EvolutionSection({
   measurements,
+  directions,
   now,
 }: {
   measurements: Measurement[];
+  /** The reader's direction preference per metric; presentation only. */
+  directions: DirectionPreferences;
   /** Fixed by the server for this request; see the note above. */
   now: Date;
 }) {
@@ -183,7 +187,7 @@ export function EvolutionSection({
 
           {hasAnyPoints(series) ? (
             <>
-              <MetricChart series={series} />
+              <MetricChart series={series} direction={directions[metric]} />
               {/* One reading is worth drawing, but it is not an evolution.
                   Say which of the two this is. */}
               {!hasEnoughPoints(series) && (

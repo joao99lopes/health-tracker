@@ -8,6 +8,12 @@ import {
   type Sex,
 } from "./fields.ts";
 import { isLanguage, type Language } from "../i18n/languages.ts";
+import { METRICS, type Metric } from "../measurements/metrics.ts";
+import {
+  DEFAULT_METRIC_DIRECTION,
+  isMetricDirection,
+  type DirectionPreferences,
+} from "../preferences/direction.ts";
 
 /**
  * Profile validation, shared by the form and the server action so the two
@@ -25,6 +31,11 @@ export type ProfileInput = {
   sex: string;
   heightCm: string;
   language: string;
+  /**
+   * Direction preferences keyed by metric, as the form holds them. A metric
+   * that is absent simply has no preference yet.
+   */
+  directions: Partial<Record<Metric, string>>;
 };
 
 /** A stored profile, parsed and ready for the database. */
@@ -35,6 +46,7 @@ export type ParsedProfile = {
   sex: Sex;
   heightCm: number;
   language: Language;
+  directions: DirectionPreferences;
 };
 
 export type ProfileIssue =
@@ -48,7 +60,8 @@ export type ProfileIssue =
   | "HEIGHT_REQUIRED"
   | "HEIGHT_INVALID"
   | "HEIGHT_OUT_OF_RANGE"
-  | "LANGUAGE_INVALID";
+  | "LANGUAGE_INVALID"
+  | "DIRECTION_INVALID";
 
 export type ProfileParseResult =
   | { issues: ProfileIssue[]; profile?: undefined }
@@ -114,6 +127,31 @@ export function roundHeightCm(value: number): number {
 }
 
 /**
+ * A complete set of direction preferences, or null when one of them is not a
+ * value the enum allows.
+ *
+ * An absent metric is not an error: it means no preference has been expressed,
+ * which is exactly the default.
+ */
+function parseDirections(
+  input: Partial<Record<Metric, string>>,
+): DirectionPreferences | null {
+  const parsed = {} as DirectionPreferences;
+  for (const metric of METRICS) {
+    const value = (input[metric] ?? "").trim();
+    if (value.length === 0) {
+      parsed[metric] = DEFAULT_METRIC_DIRECTION;
+      continue;
+    }
+    if (!isMetricDirection(value)) {
+      return null;
+    }
+    parsed[metric] = value;
+  }
+  return parsed;
+}
+
+/**
  * Every problem with the submitted profile, in display order, or the parsed
  * profile when there are none.
  *
@@ -158,6 +196,11 @@ export function parseProfileInput(
     issues.push("LANGUAGE_INVALID");
   }
 
+  const directions = parseDirections(input.directions);
+  if (directions === null) {
+    issues.push("DIRECTION_INVALID");
+  }
+
   if (issues.length > 0) {
     return { issues };
   }
@@ -172,6 +215,7 @@ export function parseProfileInput(
       // database do it silently, so what is stored is what was validated.
       heightCm: roundHeightCm(heightCm as number),
       language: language as Language,
+      directions: directions as DirectionPreferences,
     },
   };
 }

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { CheckCircle2Icon, TriangleAlertIcon } from "lucide-react";
 import { saveProfileAction } from "@/app/(app)/profile/actions";
+import { DirectionPreferencesSection } from "@/components/profile/direction-preferences";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,6 +30,10 @@ import {
   PROFILE_ISSUE_FIELD,
   profileIssueMessage,
 } from "@/lib/profile/messages";
+import {
+  DEFAULT_DIRECTION_PREFERENCES,
+  type DirectionPreferences,
+} from "@/lib/preferences/direction";
 import type { Profile } from "@/lib/profile/queries";
 import { parseProfileInput, type ProfileIssue } from "@/lib/profile/validation";
 
@@ -87,6 +92,9 @@ export function ProfileForm({
   const [language, setLanguage] = useState<string>(
     profile?.language ?? fallbackLanguage,
   );
+  const [directions, setDirections] = useState<DirectionPreferences>(
+    profile?.directions ?? DEFAULT_DIRECTION_PREFERENCES,
+  );
 
   const [issues, setIssues] = useState<ProfileIssue[]>([]);
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
@@ -96,7 +104,7 @@ export function ProfileForm({
     event.preventDefault();
     setStatus("idle");
 
-    const input = { name, birthDate, sex, heightCm, language };
+    const input = { name, birthDate, sex, heightCm, language, directions };
     const parsed = parseProfileInput(input);
     setIssues(parsed.issues);
     if (!parsed.profile) {
@@ -232,6 +240,14 @@ export function ProfileForm({
             </Select>
             <FieldIssues field="language" issues={issues} t={t} />
           </div>
+
+          {/* A presentation preference: it changes how a recorded change is
+              coloured, and nothing about what is recorded. */}
+          <DirectionPreferencesSection
+            value={directions}
+            onChange={setDirections}
+          />
+          <FieldIssues field="directions" issues={issues} t={t} />
 
           {/* Announced when it appears: a save that only changed a colour on
               screen is a save the reader can miss entirely. */}

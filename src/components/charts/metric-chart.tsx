@@ -23,6 +23,8 @@ import { metricLabel } from "@/lib/measurements/messages";
 import type { Metric } from "@/lib/measurements/metrics";
 import type { MetricSeries, SeriesPoint } from "@/lib/measurements/series";
 import type { PeriodKey } from "@/lib/periods/periods";
+import type { MetricDirection } from "@/lib/preferences/direction";
+import { DIRECTION_CHART_COLOR } from "@/components/tone";
 
 /**
  * One metric plotted over time.
@@ -38,7 +40,12 @@ import type { PeriodKey } from "@/lib/periods/periods";
  * data, and this runs on a Raspberry Pi and on phones.
  *
  * Colours are read from the theme's CSS variables, so the chart follows the
- * light and dark themes without being told about them.
+ * light and dark themes without being told about them. Where the reader has
+ * said which way they would like this metric to move, the whole line takes a
+ * single colour for that direction. It is one flat colour, never graded by
+ * magnitude and never split segment by segment: it names the direction the
+ * reader picked and claims nothing about health. With no preference the chart
+ * keeps the default accent.
  *
  * Recharts measures the DOM, and the axis labels are written in the reader's
  * own time zone, which the server does not know. The chart is therefore drawn
@@ -93,11 +100,19 @@ function ChartTooltip({
   );
 }
 
-export function MetricChart({ series }: { series: MetricSeries }) {
+export function MetricChart({
+  series,
+  direction,
+}: {
+  series: MetricSeries;
+  /** The reader's preference for this metric; presentation only. */
+  direction: MetricDirection;
+}) {
   const { t, language } = useI18n();
   const hydrated = useHydrated();
   // Several charts can share a page; the gradient must not be shared with it.
   const gradientId = useId();
+  const color = DIRECTION_CHART_COLOR[direction];
 
   const withYear = LONG_PERIODS.includes(series.period);
   const only = series.points.length === 1 ? series.points[0] : undefined;
@@ -126,8 +141,8 @@ export function MetricChart({ series }: { series: MetricSeries }) {
         >
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.22} />
-              <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
+              <stop offset="0%" stopColor={color} stopOpacity={0.22} />
+              <stop offset="100%" stopColor={color} stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid
@@ -174,7 +189,7 @@ export function MetricChart({ series }: { series: MetricSeries }) {
           <Area
             type="monotone"
             dataKey="value"
-            stroke="var(--chart-1)"
+            stroke={color}
             strokeWidth={2}
             fill={`url(#${gradientId})`}
             dot={
@@ -182,14 +197,14 @@ export function MetricChart({ series }: { series: MetricSeries }) {
                 ? {
                     r: 3,
                     fill: "var(--card)",
-                    stroke: "var(--chart-1)",
+                    stroke: color,
                     strokeWidth: 2,
                   }
                 : false
             }
             activeDot={{
               r: 5,
-              fill: "var(--chart-1)",
+              fill: color,
               stroke: "var(--card)",
               strokeWidth: 2,
             }}

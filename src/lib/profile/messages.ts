@@ -27,7 +27,7 @@ export function profileIssueMessage(t: Dictionary, issue: ProfileIssue): string 
 /** The field each code belongs to, so the message appears under its input. */
 export const PROFILE_ISSUE_FIELD: Record<
   ProfileIssue,
-  "name" | "birthDate" | "sex" | "heightCm" | "language"
+  "name" | "birthDate" | "sex" | "heightCm" | "language" | "directions"
 > = {
   NAME_TOO_LONG: "name",
   BIRTH_DATE_REQUIRED: "birthDate",
@@ -40,4 +40,5 @@ export const PROFILE_ISSUE_FIELD: Record<
   HEIGHT_INVALID: "heightCm",
   HEIGHT_OUT_OF_RANGE: "heightCm",
   LANGUAGE_INVALID: "language",
+  DIRECTION_INVALID: "directions",
 };

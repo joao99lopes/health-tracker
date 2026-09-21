@@ -12,6 +12,7 @@ import {
 import { useI18n } from "@/lib/i18n/context";
 import { compareOverPeriod } from "@/lib/measurements/comparison";
 import type { Measurement } from "@/lib/measurements/queries";
+import type { DirectionPreferences } from "@/lib/preferences/direction";
 import {
   DEFAULT_PERIOD,
   PERIOD_KEYS,
@@ -37,9 +38,12 @@ import {
  */
 export function PeriodComparisonCard({
   measurements,
+  directions,
   now,
 }: {
   measurements: Measurement[];
+  /** The reader's direction preference per metric; presentation only. */
+  directions: DirectionPreferences;
   now: Date;
 }) {
   const { t } = useI18n();
@@ -54,6 +58,7 @@ export function PeriodComparisonCard({
     <ComparisonCard
       title={t.dashboard.vsPeriod}
       comparison={comparison}
+      directions={directions}
       action={
         <Select
           value={period}

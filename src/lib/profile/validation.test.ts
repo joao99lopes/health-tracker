@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { HEIGHT_CM_MAX, HEIGHT_CM_MIN, NAME_MAX_LENGTH } from "./fields.ts";
+import { DEFAULT_DIRECTION_PREFERENCES } from "../preferences/direction.ts";
 import { parseHeightCm, parseProfileInput } from "./validation.ts";
 
 const NOW = new Date("2026-09-18T12:00:00.000Z");
@@ -12,6 +13,7 @@ function input(overrides: Partial<Parameters<typeof parseProfileInput>[0]> = {})
     sex: "FEMALE",
     heightCm: "167.5",
     language: "pt",
+    directions: {},
     ...overrides,
   };
 }
@@ -25,6 +27,7 @@ test("accepts a complete profile", () => {
     sex: "FEMALE",
     heightCm: 167.5,
     language: "pt",
+    directions: DEFAULT_DIRECTION_PREFERENCES,
   });
 });
 
@@ -112,7 +115,14 @@ test("rejects a missing, unparseable or implausible height", () => {
 
 test("reports every problem at once", () => {
   const result = parseProfileInput(
-    { name: "", birthDate: "", sex: "", heightCm: "", language: "" },
+    {
+      name: "",
+      birthDate: "",
+      sex: "",
+      heightCm: "",
+      language: "",
+      directions: {},
+    },
     NOW,
   );
   assert.deepEqual(result.issues, [
@@ -121,4 +131,21 @@ test("reports every problem at once", () => {
     "HEIGHT_REQUIRED",
     "LANGUAGE_INVALID",
   ]);
+});
+
+test("an unknown direction preference is rejected", () => {
+  assert.deepEqual(
+    parseProfileInput(input({ directions: { weightKg: "lower" } }), NOW).issues,
+    ["DIRECTION_INVALID"],
+  );
+});
+
+test("a stated direction preference is kept, the rest default", () => {
+  const result = parseProfileInput(
+    input({ directions: { weightKg: "decrease" } }),
+    NOW,
+  );
+  assert.deepEqual(result.issues, []);
+  assert.equal(result.profile?.directions.weightKg, "decrease");
+  assert.equal(result.profile?.directions.bmi, "indifferent");
 });

@@ -1,8 +1,17 @@
 import "server-only";
 
-import { Language as DbLanguage, Sex as DbSex } from "@prisma/client";
+import {
+  Language as DbLanguage,
+  MetricDirection as DbMetricDirection,
+  Sex as DbSex,
+} from "@prisma/client";
 import { prisma } from "@/lib/db";
 import type { Language } from "@/lib/i18n/languages";
+import type { Metric } from "@/lib/measurements/metrics";
+import type {
+  DirectionPreferences,
+  MetricDirection,
+} from "@/lib/preferences/direction";
 import type { Sex } from "@/lib/profile/fields";
 import type { ParsedProfile } from "@/lib/profile/validation";
 
@@ -28,6 +37,62 @@ const LANGUAGE_FROM_DB: Record<DbLanguage, Language> = {
   [DbLanguage.PT]: "pt",
 };
 
+const DIRECTION_TO_DB: Record<MetricDirection, DbMetricDirection> = {
+  decrease: DbMetricDirection.DECREASE,
+  indifferent: DbMetricDirection.INDIFFERENT,
+  increase: DbMetricDirection.INCREASE,
+};
+
+const DIRECTION_FROM_DB: Record<DbMetricDirection, MetricDirection> = {
+  [DbMetricDirection.DECREASE]: "decrease",
+  [DbMetricDirection.INDIFFERENT]: "indifferent",
+  [DbMetricDirection.INCREASE]: "increase",
+};
+
+/**
+ * The column holding each metric's preference.
+ *
+ * One entry per metric, written out rather than derived from a naming rule, so
+ * that adding a metric without adding its column is a type error rather than a
+ * silently missing preference.
+ */
+const DIRECTION_COLUMNS = {
+  weightKg: "weightKgDirection",
+  bodyFatPercent: "bodyFatPercentDirection",
+  hydrationPercent: "hydrationPercentDirection",
+  musclePercent: "musclePercentDirection",
+  boneMassKg: "boneMassKgDirection",
+  visceralFat: "visceralFatDirection",
+  bmi: "bmiDirection",
+} as const satisfies Record<Metric, string>;
+
+type DirectionColumns = Record<
+  (typeof DIRECTION_COLUMNS)[Metric],
+  DbMetricDirection
+>;
+
+function directionsFromDb(row: DirectionColumns): DirectionPreferences {
+  const preferences = {} as DirectionPreferences;
+  for (const [metric, column] of Object.entries(DIRECTION_COLUMNS) as [
+    Metric,
+    (typeof DIRECTION_COLUMNS)[Metric],
+  ][]) {
+    preferences[metric] = DIRECTION_FROM_DB[row[column]];
+  }
+  return preferences;
+}
+
+function directionsToDb(preferences: DirectionPreferences): DirectionColumns {
+  const columns = {} as DirectionColumns;
+  for (const [metric, column] of Object.entries(DIRECTION_COLUMNS) as [
+    Metric,
+    (typeof DIRECTION_COLUMNS)[Metric],
+  ][]) {
+    columns[column] = DIRECTION_TO_DB[preferences[metric]];
+  }
+  return columns;
+}
+
 /** A profile as the application uses it: plain values, no Decimal. */
 export type Profile = {
   name: string | null;
@@ -35,6 +100,8 @@ export type Profile = {
   sex: Sex;
   heightCm: number;
   language: Language;
+  /** Presentation only: which way the reader would like each metric to move. */
+  directions: DirectionPreferences;
 };
 
 export async function getProfile(userId: string): Promise<Profile | null> {
@@ -49,6 +116,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
     sex: row.sex,
     heightCm: row.heightCm.toNumber(),
     language: LANGUAGE_FROM_DB[row.language],
+    directions: directionsFromDb(row),
   };
 }
 
@@ -81,6 +149,7 @@ export async function saveProfile(
     sex: profile.sex as DbSex,
     heightCm: profile.heightCm,
     language: LANGUAGE_TO_DB[profile.language],
+    ...directionsToDb(profile.directions),
   };
 
   await prisma.profile.upsert({
@@ -89,3 +158,4 @@ export async function saveProfile(
     update: data,
   });
 }
+

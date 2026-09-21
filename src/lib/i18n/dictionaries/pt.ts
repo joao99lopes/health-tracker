@@ -135,6 +135,16 @@ export const pt: Dictionary = {
     heightCm: "Altura (cm)",
     heightHint: "Aplica-se apenas a novas medições.",
     language: "Idioma",
+    directions: {
+      title: "Preferências de direção",
+      hint: "Só afeta a forma como as variações são mostradas. Sem metas nem objetivos.",
+      legend: (metric: string) => `Direção preferida para ${metric}`,
+      values: {
+        decrease: "Descer",
+        indifferent: "Sem preferência",
+        increase: "Subir",
+      },
+    },
     saved: "Perfil guardado.",
     failed: "Não foi possível guardar o perfil. Tente novamente.",
     sexes: {
@@ -155,6 +165,7 @@ export const pt: Dictionary = {
       HEIGHT_OUT_OF_RANGE: (min: number, max: number) =>
         `Introduza uma altura entre ${min} e ${max} cm.`,
       LANGUAGE_INVALID: "Selecione um idioma.",
+      DIRECTION_INVALID: "Selecione uma das direções disponíveis.",
     },
   },
 
