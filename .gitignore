@@ -32,9 +32,5 @@ yarn-error.log*
 # testing / coverage
 /coverage
 
-# local database dumps and backups
-/backups
-*.sql.gz
-
 # vercel
 .vercel

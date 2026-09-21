@@ -56,14 +56,12 @@ committed; `.env.example` is committed and must never hold real secrets.
 
 | Variable                | Required   | Default          | Used by            | Notes |
 | ----------------------- | ---------- | ---------------- | ------------------ | ----- |
-| `POSTGRES_USER`         | no         | `health`         | `db`, `backup`     | |
-| `POSTGRES_PASSWORD`     | **yes**    | —                | `db`, `app`, `backup` | Compose refuses to start without it. |
-| `POSTGRES_DB`           | no         | `health_tracker` | `db`, `app`, `backup` | |
+| `POSTGRES_USER`         | no         | `health`         | `db`               | |
+| `POSTGRES_PASSWORD`     | **yes**    | —                | `db`, `app`        | Compose refuses to start without it. |
+| `POSTGRES_DB`           | no         | `health_tracker` | `db`, `app`        | |
 | `DATABASE_URL`          | dev only   | —                | host `npm` tooling | Points at `localhost:5432`. The containers ignore it — Compose builds its own pointing at the `db` service. |
 | `BETTER_AUTH_SECRET`    | **yes**    | —                | `app`              | Session cookie signing key. **Minimum 32 characters**; the app refuses to start below that. Generate with `openssl rand -base64 32`. |
 | `BETTER_AUTH_URL`       | **yes** in production | `http://localhost:3000` in dev | `app` | The origin users actually type. See the warning below. |
-| `BACKUP_DIR`            | no         | `./backups`      | `backup`           | Host directory for dumps. Relative paths resolve from the compose file. |
-| `BACKUP_RETENTION_DAYS` | no         | `30`             | `backup`           | Whole number of days. Must be numeric or the service refuses to start. |
 
 > **`BETTER_AUTH_URL` is the single most common deployment mistake.** On the Pi
 > it must be the LAN origin users type, e.g. `http://192.168.1.50:3000` — not
@@ -145,7 +143,6 @@ Edit `.env`:
 POSTGRES_PASSWORD=<a real password>
 BETTER_AUTH_SECRET=<openssl rand -base64 32>
 BETTER_AUTH_URL=http://192.168.1.50:3000    # this Pi's LAN address
-BACKUP_DIR=./backups                         # or a USB disk — see Backups
 ```
 
 Bring the whole stack up:
@@ -155,13 +152,12 @@ docker compose up -d --build
 ```
 
 The first build takes several minutes on a Pi 4. Compose then starts things in
-order: `db` → wait for healthy → `migrate` (applies migrations, exits) → `app`
-and `backup`.
+order: `db` → wait for healthy → `migrate` (applies migrations, exits) → `app`.
 
 Verify:
 
 ```sh
-docker compose ps           # db, app, backup up; migrate exited 0
+docker compose ps           # db and app up; migrate exited 0
 curl -I http://localhost:3000
 ```
 
@@ -210,7 +206,7 @@ docker compose down           # stop and remove containers + network
 `db_data` volume, which is not removed.
 
 > `docker compose down -v` **deletes the `db_data` volume and all health data.**
-> Never run it on the Pi unless you have a backup you have tested restoring.
+> There is no way to undo it.
 
 The stack sets `restart: unless-stopped`, so it comes back by itself after a
 reboot or a crash.
@@ -221,7 +217,6 @@ reboot or a crash.
 
 ```sh
 cd health-tracker
-docker compose run --rm backup /usr/local/bin/backup.sh once   # backup first
 git pull
 docker compose up -d --build
 ```
@@ -238,101 +233,7 @@ docker compose logs -f app           # follow the app
 docker compose logs -f               # everything
 docker compose logs --tail=100 app   # recent lines only
 docker compose logs migrate          # did migrations apply?
-docker compose logs backup           # did last night's backup run?
 ```
-
-Backup lines are prefixed `[backup]`:
-
-```
-[backup] 2026-09-18T13:40:11Z directory=/backups retention=30d database=health_tracker@db
-[backup] 2026-09-18T13:40:11Z wrote health_tracker-20260918T134011Z.sql.gz (4.0K)
-```
-
----
-
-## Backups
-
-The `backup` service writes **one gzipped SQL dump per day** into `BACKUP_DIR`,
-then deletes dumps older than `BACKUP_RETENTION_DAYS` (default 30). It runs a
-backup immediately on start, so a new deployment has one straight away rather
-than a day later.
-
-**Location:** `BACKUP_DIR`, default `./backups` next to the compose file.
-
-```sh
-ls -lh backups/
-# health_tracker-20260918T134011Z.sql.gz
-```
-
-Filenames are `<database>-<UTC timestamp>.sql.gz`, so they sort chronologically.
-
-Take one on demand:
-
-```sh
-docker compose run --rm backup /usr/local/bin/backup.sh once
-```
-
-Properties worth knowing:
-
-- It reaches PostgreSQL over the compose network by service name and publishes
-  no port, so backups do not widen the database's exposure.
-- Dumps are written to a `.partial` name and renamed only after `pg_dump`
-  exits successfully — an interrupted run cannot leave a truncated file that
-  looks like a good backup.
-- Pruning only matches `*.sql.gz` directly inside `BACKUP_DIR`. It never
-  touches the live database or the `db_data` volume.
-
-> By default dumps land on the SD card, which is also what fails first on a Pi.
-> Point `BACKUP_DIR` at a USB disk or a network share, and copy dumps off the
-> Pi periodically — a backup on the same failed disk is not a backup.
-
----
-
-## Restoring a backup
-
-Dumps are plain SQL, so `psql` alone restores them. Inspect one first:
-
-```sh
-zcat backups/health_tracker-20260918T134011Z.sql.gz | less
-```
-
-### Into a new database (recommended)
-
-Leaves the live database untouched, so you can check the result first.
-
-```sh
-docker compose exec db createdb -U health health_tracker_restored
-
-zcat backups/health_tracker-20260918T134011Z.sql.gz \
-  | docker compose exec -T db psql -U health -d health_tracker_restored -v ON_ERROR_STOP=1
-```
-
-Inspect it:
-
-```sh
-docker compose exec db psql -U health -d health_tracker_restored -c '\dt'
-```
-
-### Over the live database
-
-This destroys current contents. Take a fresh backup first.
-
-```sh
-docker compose run --rm backup /usr/local/bin/backup.sh once   # safety copy
-docker compose stop app                                        # stop writes
-
-docker compose exec db dropdb -U health health_tracker
-docker compose exec db createdb -U health health_tracker
-
-zcat backups/health_tracker-20260918T134011Z.sql.gz \
-  | docker compose exec -T db psql -U health -d health_tracker -v ON_ERROR_STOP=1
-
-docker compose start app
-```
-
-Dumps carry no ownership or grant statements, so they restore cleanly under
-whichever role does the restoring — including into a throwaway PostgreSQL
-container if you only want to look inside one.
 
 ---
 
@@ -372,18 +273,13 @@ By design — the app will not run against an un-migrated schema. Read
 `docker compose logs migrate`; it is usually a bad `POSTGRES_PASSWORD` or a
 database that has not finished starting.
 
-**`[backup] FAILED: pg_dump did not complete`.**
-The database was unreachable. Existing backups are left intact and no partial
-file is kept. Check `docker compose ps` and the `db` logs.
-
 **Port 3000 already in use.**
 Something else holds it. Find it with `sudo ss -ltnp | grep 3000`, or change
 the published port in `docker-compose.yml`, remembering to update
 `BETTER_AUTH_URL` to match.
 
 **Out of disk on the Pi.**
-`docker image prune -f` reclaims superseded build layers. Check backup growth
-with `du -sh backups/` and lower `BACKUP_RETENTION_DAYS` if needed.
+`docker image prune -f` reclaims superseded build layers.
 
 ---
 
@@ -394,7 +290,7 @@ assumption:
 
 | Check | Result |
 | ----- | ------ |
-| `postgres:17-alpine` (`db`, `backup`) | publishes `linux/arm64`; runs as `aarch64`, PostgreSQL 17.11 |
+| `postgres:17-alpine` (`db`) | publishes `linux/arm64`; runs as `aarch64`, PostgreSQL 17.11 |
 | `node:22-bookworm-slim` (`Dockerfile`) | publishes `linux/arm64`; runs as `aarch64`, Node arm64 v22.23.2 |
 | Platform pins | none — no `platform:` in either compose file, no `--platform` in the Dockerfile |
 | Native npm packages | `@next/swc`, `@tailwindcss/oxide`, `lightningcss`, `@unrs/resolver`, `sharp` — all ship `linux-arm64` builds, at full parity with x64 in `package-lock.json` |

@@ -44,7 +44,7 @@ volume or it will see an empty `node_modules`. Use `node:22-bookworm`, not
 ## Deployment
 
 Development and Raspberry Pi production workflows, environment variables,
-migrations, backups, restores and troubleshooting are all in
+migrations and troubleshooting are all in
 **[DEPLOYMENT.md](./DEPLOYMENT.md)**.
 
 Short version for the Pi:
@@ -55,8 +55,8 @@ docker compose up -d --build
 ```
 
 `docker-compose.yml` alone is the production stack: PostgreSQL on a persistent
-`db_data` volume with no published port, migrations applied automatically, daily
-gzipped backups, and port 3000 as the only thing reachable from the LAN.
+`db_data` volume with no published port, migrations applied automatically, and
+port 3000 as the only thing reachable from the LAN.
 
 ## Scripts
 
@@ -76,5 +76,3 @@ gzipped backups, and port 3000 as the only thing reachable from the LAN.
 
 Dashboard, measurements, charts and profile are built, in English and
 Portuguese, on top of email/password authentication.
-
-Automated PostgreSQL backups run daily — see [DEPLOYMENT.md](./DEPLOYMENT.md#backups).

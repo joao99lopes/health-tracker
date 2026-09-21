@@ -34,12 +34,10 @@ Everything must build and run on **ARM64** — production is a Raspberry Pi 4
 - PostgreSQL uses a **persistent Docker volume**.
 - PostgreSQL is **never exposed to the network** — no published port on the
   host beyond what local development needs.
-- Automated PostgreSQL backups are **required, but only after the core app
-  works**. Do not implement them early. (Done — see the backups notes below.)
 
 The full workflow for both environments — prerequisites, environment variables,
-first deployment, migrations, start/stop, updates, logs, backups, restores and
-troubleshooting — lives in `DEPLOYMENT.md`. Keep it current when any of that
+first deployment, migrations, start/stop, updates, logs and troubleshooting —
+lives in `DEPLOYMENT.md`. Keep it current when any of that
 changes, and do not duplicate it into README.md.
 
 ## Domain model
@@ -251,25 +249,6 @@ Three things there are deliberate and easy to undo by accident:
 **Build the image on the machine that runs it.** The base images are multi-arch,
 so an amd64 laptop and an arm64 Raspberry Pi each build natively - no emulation
 and no `binaryTargets` juggling for Prisma's query engine.
-
-**Backups.** The `backup` service runs `scripts/backup.sh`: one gzipped plain
-SQL dump per day into `BACKUP_DIR` (default `./backups`), pruned after
-`BACKUP_RETENTION_DAYS` (default 30). It uses the same `postgres:17-alpine`
-image as `db`, so `pg_dump` always matches the server version and the service is
-multi-arch for free.
-
-Three details there are deliberate:
-
-- Dumps go to a `.partial` name and are renamed only after `pg_dump` succeeds,
-  so an interrupted run never leaves a truncated file that looks usable.
-- `pg_dump --compress` rather than piping into `gzip`: a pipeline reports
-  gzip's exit status, not `pg_dump`'s, and busybox `ash` has no dependable
-  `pipefail`.
-- Pruning is `find -maxdepth 1 -type f -name '*.sql.gz' -mtime +N -delete`,
-  scoped so it can only remove dumps this script wrote. It never touches the
-  live database or the `db_data` volume.
-
-Restore procedure is in README.md.
 
 ### UI components
 

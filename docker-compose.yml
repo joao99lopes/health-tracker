@@ -44,30 +44,6 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-health}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-health_tracker}
     command: node node_modules/prisma/build/index.js migrate deploy
 
-  # Daily gzipped pg_dump into a host directory, pruned by age. Same image as
-  # `db`, so pg_dump matches the server version exactly and the service is
-  # multi-arch for free. It talks to `db` over the compose network and
-  # publishes nothing.
-  backup:
-    image: postgres:17-alpine
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-health}
-      POSTGRES_DB: ${POSTGRES_DB:-health_tracker}
-      # pg_dump reads the password from here; it never appears on a command
-      # line, where it would be visible in `ps`.
-      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
-      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
-    volumes:
-      # Host directory holding the dumps. Keep it on storage that is not the
-      # SD card if you can - see README.md.
-      - ${BACKUP_DIR:-./backups}:/backups
-      - ./scripts/backup.sh:/usr/local/bin/backup.sh:ro
-    command: ["/bin/sh", "/usr/local/bin/backup.sh"]
-
   app:
     build:
       context: .
