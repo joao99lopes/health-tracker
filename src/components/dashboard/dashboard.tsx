@@ -40,6 +40,7 @@ import {
   changeTone,
   type DirectionPreferences,
 } from "@/lib/preferences/direction";
+import { METRIC_ICONS } from "@/components/metric-icons";
 import { TONE_TEXT_CLASS } from "@/components/tone";
 import { cn } from "@/lib/utils";
 import {
@@ -124,6 +125,7 @@ function MetricCard({
 }) {
   const { t, language } = useI18n();
   const hydrated = useHydrated();
+  const MetricIcon = METRIC_ICONS[reading.metric];
   const DirectionIcon = change === null ? null : DIRECTION_ICONS[change.direction];
   const tone =
     change === null
@@ -133,7 +135,8 @@ function MetricCard({
   return (
     <Card size="sm" className="justify-between">
       <CardContent className="flex flex-col gap-1.5">
-        <p className="text-muted-foreground text-xs font-medium">
+        <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
+          <MetricIcon className="text-primary size-3.5 shrink-0" aria-hidden />
           {metricLabel(t, reading.metric)}
         </p>
         <p className="text-xl font-semibold tabular-nums sm:text-2xl">
@@ -223,6 +226,7 @@ export function Dashboard({
     return band === null ? null : t.measurements.waistToHeightCategories[band];
   };
   const changes = previousChanges(measurements);
+  const BmiIcon = METRIC_ICONS.bmi;
   // The band applied at the time of the measurement, from the age then.
   const category = isAdultBmiApplicable(
     ageInYears(birthDate, latest.measuredAt),
@@ -246,7 +250,11 @@ export function Dashboard({
 
           {bmi !== null && (
             <div className="flex flex-col gap-1 sm:items-end">
-              <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+              <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium tracking-wide uppercase">
+                <BmiIcon
+                  className="text-primary size-3.5 shrink-0"
+                  aria-hidden
+                />
                 {t.measurements.bmi}
               </p>
               <p className="text-4xl leading-none font-semibold tabular-nums sm:text-5xl">
