@@ -195,7 +195,12 @@ export const pt: Dictionary = {
     goToProfile: "Ir para o perfil",
     values: "Valores",
     bmi: "IMC",
-    bmiDerived: "Calculado a partir do peso e da altura acima.",
+    waistToHeightRatio: "Relação cintura-altura",
+    derivedHint:
+      "Calculados a partir dos valores e da altura registados com esta medição.",
+    howToMeasure: "Como medir",
+    abdominalCircumferenceHelp:
+      "Meça com uma fita métrica, de pé e relaxado, no final de uma expiração normal. Mantenha a fita horizontal, justa mas sem apertar a pele. Meça sempre no mesmo local para tornar os valores comparáveis.",
     view: "Ver",
     actions: "Ações",
     created: "Medição adicionada.",
@@ -213,6 +218,7 @@ export const pt: Dictionary = {
       musclePercent: "Músculo (%)",
       boneMassKg: "Massa óssea (kg)",
       visceralFat: "Gordura visceral",
+      abdominalCircumferenceCm: "Perímetro abdominal (cm)",
     },
     bmiCategories: {
       UNDERWEIGHT: "Baixo peso",
@@ -221,6 +227,12 @@ export const pt: Dictionary = {
       OBESE_I: "Obesidade grau I",
       OBESE_II: "Obesidade grau II",
       OBESE_III: "Obesidade grau III",
+    },
+    waistToHeightCategories: {
+      LOW: "Baixo",
+      HEALTHY: "Intervalo geralmente saudável",
+      INCREASED: "Aumentado",
+      HIGH: "Elevado",
     },
     issues: {
       MEASURED_AT_REQUIRED: "Introduza a data e a hora da medição.",

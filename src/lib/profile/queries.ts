@@ -64,6 +64,8 @@ const DIRECTION_COLUMNS = {
   boneMassKg: "boneMassKgDirection",
   visceralFat: "visceralFatDirection",
   bmi: "bmiDirection",
+  abdominalCircumferenceCm: "abdominalCircumferenceCmDirection",
+  waistToHeightRatio: "waistToHeightRatioDirection",
 } as const satisfies Record<Metric, string>;
 
 type DirectionColumns = Record<

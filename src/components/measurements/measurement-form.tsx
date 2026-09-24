@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { TriangleAlertIcon } from "lucide-react";
+import { InfoIcon, TriangleAlertIcon } from "lucide-react";
 import {
   createMeasurementAction,
   updateMeasurementAction,
@@ -29,7 +29,10 @@ import {
   toMeasurementInput,
   type MeasurementFormValues,
 } from "@/lib/measurements/form";
-import { measurementIssueMessage } from "@/lib/measurements/messages";
+import {
+  measurementFieldHelp,
+  measurementIssueMessage,
+} from "@/lib/measurements/messages";
 import type { Measurement } from "@/lib/measurements/queries";
 import {
   parseMeasurementInput,
@@ -105,6 +108,11 @@ export function MeasurementForm({
     "idle" | "error" | "not-found" | "no-height"
   >("idle");
   const [pending, setPending] = useState(false);
+  // Which field's "how to measure" note is open. Collapsed by default so the
+  // guidance stays secondary to the inputs.
+  const [openHelp, setOpenHelp] = useState<MeasurementValueField | null>(
+    null,
+  );
 
   function setValue(field: MeasurementValueField, value: string) {
     setValues((current) => ({ ...current, [field]: value }));
@@ -189,34 +197,68 @@ export function MeasurementForm({
               {t.measurements.values}
             </legend>
             <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
-              {MEASUREMENT_VALUE_FIELDS.map((field) => (
-                <div key={field} className="flex flex-col gap-2">
-                  <Label htmlFor={field}>
-                    {t.measurements.fields[field]}{" "}
-                    <span className="text-muted-foreground font-normal">
-                      ({t.common.optional})
-                    </span>
-                  </Label>
-                  <Input
-                    id={field}
-                    name={field}
-                    type="text"
-                    inputMode={
-                      MEASUREMENT_FIELD_SPECS[field].decimals > 0
-                        ? "decimal"
-                        : "numeric"
-                    }
-                    autoComplete="off"
-                    aria-invalid={invalid(field) || undefined}
-                    aria-describedby={
-                      invalid(field) ? `${field}-issues` : undefined
-                    }
-                    value={values[field]}
-                    onChange={(event) => setValue(field, event.target.value)}
-                  />
-                  <FieldIssues field={field} issues={issues} t={t} />
-                </div>
-              ))}
+              {MEASUREMENT_VALUE_FIELDS.map((field) => {
+                const help = measurementFieldHelp(t, field);
+                const helpOpen = help !== null && openHelp === field;
+                const describedBy =
+                  [
+                    invalid(field) ? `${field}-issues` : null,
+                    helpOpen ? `${field}-help` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" ") || undefined;
+                return (
+                  <div key={field} className="flex flex-col gap-2">
+                    <div className="flex items-center gap-1">
+                      <Label htmlFor={field}>
+                        {t.measurements.fields[field]}{" "}
+                        <span className="text-muted-foreground font-normal">
+                          ({t.common.optional})
+                        </span>
+                      </Label>
+                      {help !== null && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-xs"
+                          className="text-muted-foreground -my-1"
+                          aria-label={t.measurements.howToMeasure}
+                          title={t.measurements.howToMeasure}
+                          aria-expanded={helpOpen}
+                          aria-controls={helpOpen ? `${field}-help` : undefined}
+                          onClick={() => setOpenHelp(helpOpen ? null : field)}
+                        >
+                          <InfoIcon />
+                        </Button>
+                      )}
+                    </div>
+                    <Input
+                      id={field}
+                      name={field}
+                      type="text"
+                      inputMode={
+                        MEASUREMENT_FIELD_SPECS[field].decimals > 0
+                          ? "decimal"
+                          : "numeric"
+                      }
+                      autoComplete="off"
+                      aria-invalid={invalid(field) || undefined}
+                      aria-describedby={describedBy}
+                      value={values[field]}
+                      onChange={(event) => setValue(field, event.target.value)}
+                    />
+                    {helpOpen && (
+                      <p
+                        id={`${field}-help`}
+                        className="text-muted-foreground text-xs leading-relaxed"
+                      >
+                        {help}
+                      </p>
+                    )}
+                    <FieldIssues field={field} issues={issues} t={t} />
+                  </div>
+                );
+              })}
             </div>
           </fieldset>
 

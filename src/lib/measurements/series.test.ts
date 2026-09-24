@@ -197,3 +197,43 @@ test("identical values still get a readable range", () => {
   const [min, max] = series.domain ?? [0, 0];
   assert.ok(min < 80 && max > 80, "the flat line must not sit on the frame");
 });
+
+test("the waist-to-height ratio uses each measurement's own height", () => {
+  const series = buildMetricSeries(
+    [
+      snapshot("2026-09-02T08:00:00.000Z", {
+        abdominalCircumferenceCm: 90,
+        heightCmAtMeasurement: 180,
+      }),
+      snapshot("2026-09-18T08:00:00.000Z", {
+        abdominalCircumferenceCm: 90,
+        // Same waist, taller: the earlier point must not move with it.
+        heightCmAtMeasurement: 200,
+      }),
+    ],
+    "waistToHeightRatio",
+    "1m",
+    NOW,
+  );
+
+  assert.deepEqual(
+    series.points.map((point) => point.value),
+    [0.5, 0.45],
+  );
+});
+
+test("one waist circumference is already a point to draw", () => {
+  const series = buildMetricSeries(
+    [
+      snapshot("2026-09-02T08:00:00.000Z", { weightKg: 80 }),
+      snapshot("2026-09-18T08:00:00.000Z", { abdominalCircumferenceCm: 88 }),
+    ],
+    "abdominalCircumferenceCm",
+    "1m",
+    NOW,
+  );
+
+  assert.equal(hasAnyPoints(series), true);
+  assert.equal(series.points.length, 1);
+  assert.equal(hasEnoughPoints(series), false);
+});

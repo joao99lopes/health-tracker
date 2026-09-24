@@ -5,8 +5,9 @@
 // floating point rounding would be visible and wrong. `visceralFat` is a
 // whole number as scales report it.
 //
-// BMI is deliberately absent: it is derived from `weightKg` and
-// `heightCmAtMeasurement`. See CLAUDE.md.
+// BMI and the waist-to-height ratio are deliberately absent: they are derived
+// from `weightKg` / `abdominalCircumferenceCm` and `heightCmAtMeasurement`.
+// See CLAUDE.md.
 
 generator client {
   provider = "prisma-client-js"
@@ -148,7 +149,8 @@ model Profile {
   heightCm  Decimal  @db.Decimal(5, 1)
   language  Language
 
-  /// Direction preferences, one per metric, including the derived BMI. Only
+  /// Direction preferences, one per metric, including the derived BMI and
+  /// waist-to-height ratio. Only
   /// the current value is kept - no history of preference changes.
   weightKgDirection         MetricDirection @default(INDIFFERENT)
   bodyFatPercentDirection   MetricDirection @default(INDIFFERENT)
@@ -157,6 +159,8 @@ model Profile {
   boneMassKgDirection       MetricDirection @default(INDIFFERENT)
   visceralFatDirection      MetricDirection @default(INDIFFERENT)
   bmiDirection              MetricDirection @default(INDIFFERENT)
+  abdominalCircumferenceCmDirection MetricDirection @default(INDIFFERENT)
+  waistToHeightRatioDirection       MetricDirection @default(INDIFFERENT)
 
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
@@ -178,9 +182,12 @@ model Measurement {
   musclePercent    Decimal? @db.Decimal(4, 1)
   boneMassKg       Decimal? @db.Decimal(4, 2)
   visceralFat      Int?
+  /// Waist circumference, in cm.
+  abdominalCircumferenceCm Decimal? @db.Decimal(4, 1)
 
   /// Height at the time of the measurement. Never updated afterwards - this is
-  /// what keeps historical BMI stable when the profile height changes.
+  /// what keeps historical BMI and waist-to-height ratio stable when the
+  /// profile height changes.
   heightCmAtMeasurement Decimal @db.Decimal(5, 1)
 
   createdAt DateTime @default(now()) @db.Timestamptz(3)

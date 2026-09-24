@@ -31,11 +31,28 @@ export function measurementIssueMessage(
 /**
  * A metric's name in the current language.
  *
- * BMI is not a stored field, so it is not in the field catalogue; it is named
- * here so callers can treat every metric alike.
+ * The derived metrics are not stored fields, so they are not in the field
+ * catalogue; they are named here so callers can treat every metric alike.
  */
 export function metricLabel(t: Dictionary, metric: Metric): string {
-  return metric === "bmi"
-    ? t.measurements.bmi
-    : t.measurements.fields[metric];
+  if (metric === "bmi") {
+    return t.measurements.bmi;
+  }
+  if (metric === "waistToHeightRatio") {
+    return t.measurements.waistToHeightRatio;
+  }
+  return t.measurements.fields[metric];
+}
+
+/**
+ * How to take a field's measurement consistently, for the fields that have
+ * such guidance. Null for the rest.
+ */
+export function measurementFieldHelp(
+  t: Dictionary,
+  field: MeasurementValueField,
+): string | null {
+  return field === "abdominalCircumferenceCm"
+    ? t.measurements.abdominalCircumferenceHelp
+    : null;
 }

@@ -149,3 +149,22 @@ test("a stated direction preference is kept, the rest default", () => {
   assert.equal(result.profile?.directions.weightKg, "decrease");
   assert.equal(result.profile?.directions.bmi, "indifferent");
 });
+
+test("waist circumference and waist-to-height ratio take a direction, defaulting to none", () => {
+  const unset = parseProfileInput(input(), NOW);
+  assert.equal(unset.profile?.directions.abdominalCircumferenceCm, "indifferent");
+  assert.equal(unset.profile?.directions.waistToHeightRatio, "indifferent");
+
+  const set = parseProfileInput(
+    input({
+      directions: {
+        abdominalCircumferenceCm: "decrease",
+        waistToHeightRatio: "increase",
+      },
+    }),
+    NOW,
+  );
+  assert.deepEqual(set.issues, []);
+  assert.equal(set.profile?.directions.abdominalCircumferenceCm, "decrease");
+  assert.equal(set.profile?.directions.waistToHeightRatio, "increase");
+});

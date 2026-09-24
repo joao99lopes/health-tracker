@@ -11,26 +11,66 @@ import {
   classifyBmi,
   isAdultBmiApplicable,
 } from "@/lib/health/bmi-classification";
+import {
+  calculateWaistToHeightRatio,
+  roundWaistToHeightRatio,
+} from "@/lib/health/waist-to-height";
+import { classifyWaistToHeightRatio } from "@/lib/health/waist-to-height-classification";
 import { useI18n } from "@/lib/i18n/context";
 import { MEASUREMENT_VALUE_FIELDS } from "@/lib/measurements/fields";
 import {
   formatBmi,
   formatHeightCm,
   formatMeasurementValue,
+  formatWaistToHeightRatio,
 } from "@/lib/measurements/format";
 import type { Measurement } from "@/lib/measurements/queries";
 
 /**
  * Everything one measurement holds.
  *
- * Values that were not recorded say so rather than showing a zero. BMI is
- * derived here from the weight and the height stored *with this measurement*,
- * never from the profile's current height.
+ * Values that were not recorded say so rather than showing a zero. BMI and
+ * the waist-to-height ratio are derived here from the weight, the waist and
+ * the height stored *with this measurement*, never from the profile's current
+ * height.
  *
- * The WHO band is shown only when it applies - its cut-off points are defined
- * for adults - and it is stated as the band the number falls into. Nothing
- * here interprets it.
+ * The WHO BMI band is shown only when it applies - its cut-off points are
+ * defined for adults - and every band is stated as the band the number falls
+ * into. Nothing here interprets it.
  */
+
+/** One derived number, its band where there is one, or "not recorded". */
+function DerivedValue({
+  label,
+  value,
+  category,
+}: {
+  label: string;
+  value: string | null;
+  category: string | null;
+}) {
+  const { t } = useI18n();
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+        {label}
+      </p>
+      <p className="text-4xl leading-none font-semibold tabular-nums">
+        {value ?? (
+          <span className="text-muted-foreground text-lg font-normal">
+            {t.common.notRecorded}
+          </span>
+        )}
+      </p>
+      {category !== null && (
+        <p className="bg-card/70 text-foreground ring-foreground/10 mt-1 w-fit rounded-full px-2.5 py-0.5 text-xs font-medium ring-1">
+          {category}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function MeasurementDetail({
   measurement,
   ageAtMeasurement,
@@ -47,31 +87,41 @@ export function MeasurementDetail({
   const category = isAdultBmiApplicable(ageAtMeasurement)
     ? classifyBmi(bmi)
     : null;
+  // Classified on the exact ratio; only the displayed number is rounded.
+  const ratio = calculateWaistToHeightRatio(
+    measurement.abdominalCircumferenceCm,
+    measurement.heightCmAtMeasurement,
+  );
+  const ratioCategory = classifyWaistToHeightRatio(ratio);
 
   return (
     <div className="flex flex-col gap-4">
-      {/* The derived number the page is really about, given the most weight. */}
+      {/* The derived numbers the page is really about, given the most weight. */}
       <Card className="from-accent/60 to-card bg-gradient-to-br">
-        <CardContent className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-col gap-1">
-            <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-              {t.measurements.bmi}
-            </p>
-            <p className="text-4xl leading-none font-semibold tabular-nums">
-              {formatBmi(bmi, language) ?? (
-                <span className="text-muted-foreground text-lg font-normal">
-                  {t.common.notRecorded}
-                </span>
+        <CardContent className="flex flex-col gap-5">
+          <div className="grid gap-6 sm:grid-cols-2">
+            <DerivedValue
+              label={t.measurements.bmi}
+              value={formatBmi(bmi, language)}
+              category={
+                category ? t.measurements.bmiCategories[category] : null
+              }
+            />
+            <DerivedValue
+              label={t.measurements.waistToHeightRatio}
+              value={formatWaistToHeightRatio(
+                roundWaistToHeightRatio(ratio),
+                language,
               )}
-            </p>
-            {category && (
-              <p className="bg-card/70 text-foreground ring-foreground/10 mt-1 w-fit rounded-full px-2.5 py-0.5 text-xs font-medium ring-1">
-                {t.measurements.bmiCategories[category]}
-              </p>
-            )}
+              category={
+                ratioCategory
+                  ? t.measurements.waistToHeightCategories[ratioCategory]
+                  : null
+              }
+            />
           </div>
-          <p className="text-muted-foreground max-w-xs text-xs sm:text-right">
-            {t.measurements.bmiDerived}
+          <p className="text-muted-foreground text-xs">
+            {t.measurements.derivedHint}
           </p>
         </CardContent>
       </Card>

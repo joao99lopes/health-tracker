@@ -34,6 +34,7 @@ const SUMMARY_FIELDS: readonly MeasurementValueField[] = [
   "weightKg",
   "bodyFatPercent",
   "musclePercent",
+  "abdominalCircumferenceCm",
 ];
 
 function bmiText(measurement: Measurement, language: Language): string | null {

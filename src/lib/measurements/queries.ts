@@ -46,6 +46,7 @@ function toMeasurement(row: MeasurementRow): Measurement {
     musclePercent: toNumber(row.musclePercent),
     boneMassKg: toNumber(row.boneMassKg),
     visceralFat: row.visceralFat,
+    abdominalCircumferenceCm: toNumber(row.abdominalCircumferenceCm),
   };
 }
 

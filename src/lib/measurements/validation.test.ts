@@ -65,6 +65,7 @@ function input(overrides: Partial<MeasurementInput> = {}): MeasurementInput {
     musclePercent: "",
     boneMassKg: "",
     visceralFat: "",
+    abdominalCircumferenceCm: "",
     ...overrides,
   };
 }
@@ -206,4 +207,35 @@ test("accepts zero for a field whose range allows it", () => {
   const result = parseMeasurementInput(input({ visceralFat: "0" }), NOW);
   assert.deepEqual(result.issues, []);
   assert.equal(result.measurement?.values.visceralFat, 0);
+});
+
+test("a measurement may hold only a waist circumference", () => {
+  const result = parseMeasurementInput(
+    input({ abdominalCircumferenceCm: "84,26" }),
+    NOW,
+  );
+  assert.deepEqual(result.issues, []);
+  assert.equal(result.measurement?.values.abdominalCircumferenceCm, 84.3);
+  assert.equal(result.measurement?.values.weightKg, null);
+});
+
+test("weight and waist circumference are recorded together", () => {
+  const result = parseMeasurementInput(
+    input({ weightKg: "80", abdominalCircumferenceCm: "90" }),
+    NOW,
+  );
+  assert.equal(result.measurement?.values.weightKg, 80);
+  assert.equal(result.measurement?.values.abdominalCircumferenceCm, 90);
+});
+
+test("a measurement without a waist circumference leaves it null, not zero", () => {
+  const result = parseMeasurementInput(input({ weightKg: "80" }), NOW);
+  assert.equal(result.measurement?.values.abdominalCircumferenceCm, null);
+});
+
+test("an implausible waist circumference is rejected", () => {
+  assert.deepEqual(
+    codes(parseMeasurementInput(input({ abdominalCircumferenceCm: "5" }), NOW)),
+    ["abdominalCircumferenceCm:VALUE_OUT_OF_RANGE"],
+  );
 });

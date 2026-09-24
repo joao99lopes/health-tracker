@@ -169,3 +169,24 @@ test("a period holding fewer than two measurements is not enough data", () => {
   assert.equal(compareOverPeriod(SERIES, "3d", NOW), null);
   assert.equal(compareOverPeriod([], "1y", NOW), null);
 });
+
+test("the waist-to-height ratio is compared only where both sides have a waist", () => {
+  const earlier = snapshot("2026-09-01T08:00:00.000Z", {
+    weightKg: 80,
+    abdominalCircumferenceCm: 92,
+  });
+  const later = snapshot("2026-09-18T08:00:00.000Z", {
+    weightKg: 79,
+    abdominalCircumferenceCm: 90,
+  });
+  const ratio = metric(compareMeasurements(earlier, later), "waistToHeightRatio");
+  assert.equal(ratio?.from, 92 / 175);
+  assert.equal(ratio?.to, 90 / 175);
+  assert.equal(ratio?.direction, "down");
+
+  const noWaist = snapshot("2026-09-20T08:00:00.000Z", { weightKg: 78 });
+  const comparison = compareMeasurements(later, noWaist);
+  assert.equal(metric(comparison, "waistToHeightRatio"), undefined);
+  assert.equal(metric(comparison, "abdominalCircumferenceCm"), undefined);
+  assert.notEqual(metric(comparison, "weightKg"), undefined);
+});

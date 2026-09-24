@@ -1,12 +1,14 @@
 import { calculateBmi } from "../health/bmi.ts";
+import { calculateWaistToHeightRatio } from "../health/waist-to-height.ts";
 import {
   MEASUREMENT_VALUE_FIELDS,
   type MeasurementValues,
 } from "./fields.ts";
 
 /**
- * The metrics a measurement can be read as: the stored value fields plus BMI,
- * which is derived on the way out and never stored.
+ * The metrics a measurement can be read as: the stored value fields plus BMI
+ * and the waist-to-height ratio, which are derived on the way out and never
+ * stored.
  *
  * Defined once so charts, comparisons and any future summary agree on what can
  * be plotted and compared.
@@ -18,14 +20,15 @@ import {
 export type MeasurementSnapshot = MeasurementValues & {
   measuredAt: Date;
   /**
-   * The height recorded with this measurement. BMI uses this, never the
+   * The height recorded with this measurement. BMI and the waist-to-height
+   * ratio use this, never the
    * profile's current height, so history does not move when the user grows or
    * corrects their height.
    */
   heightCmAtMeasurement: number;
 };
 
-export const DERIVED_METRICS = ["bmi"] as const;
+export const DERIVED_METRICS = ["bmi", "waistToHeightRatio"] as const;
 
 export const METRICS = [...MEASUREMENT_VALUE_FIELDS, ...DERIVED_METRICS] as const;
 
@@ -37,7 +40,7 @@ export function isMetric(value: string): value is Metric {
 
 /**
  * One metric of one measurement, or null when it was not recorded (or, for
- * BMI, cannot be derived because there is no weight).
+ * a derived metric, cannot be derived because an input is missing).
  */
 export function metricValue(
   snapshot: MeasurementSnapshot,
@@ -45,6 +48,12 @@ export function metricValue(
 ): number | null {
   if (metric === "bmi") {
     return calculateBmi(snapshot.weightKg, snapshot.heightCmAtMeasurement);
+  }
+  if (metric === "waistToHeightRatio") {
+    return calculateWaistToHeightRatio(
+      snapshot.abdominalCircumferenceCm,
+      snapshot.heightCmAtMeasurement,
+    );
   }
   const value = snapshot[metric];
   return typeof value === "number" && Number.isFinite(value) ? value : null;

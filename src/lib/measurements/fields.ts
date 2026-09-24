@@ -4,7 +4,8 @@
  *
  * `measuredAt` and `heightCmAtMeasurement` are deliberately absent from the
  * value list: they are always required, so they are not "values" for the
- * at-least-one rule. BMI is absent because it is derived, never stored.
+ * at-least-one rule. BMI and the waist-to-height ratio are absent because they
+ * are derived, never stored.
  *
  * This module is pure: no Prisma, no React, no environment access.
  */
@@ -15,6 +16,7 @@ export const MEASUREMENT_VALUE_FIELDS = [
   "musclePercent",
   "boneMassKg",
   "visceralFat",
+  "abdominalCircumferenceCm",
 ] as const;
 
 export type MeasurementValueField = (typeof MEASUREMENT_VALUE_FIELDS)[number];
@@ -35,7 +37,7 @@ export type MeasurementValues = {
  */
 export type MeasurementFieldSpec = {
   /** Which unit suffix to present the value with. */
-  unit: "kg" | "%" | "none";
+  unit: "kg" | "%" | "cm" | "none";
   decimals: number;
   min: number;
   max: number;
@@ -55,6 +57,8 @@ export const MEASUREMENT_FIELD_SPECS: Record<
   boneMassKg: { unit: "kg", decimals: 2, min: 0, max: 20 },
   // Int: a unitless index as consumer scales report it.
   visceralFat: { unit: "none", decimals: 0, min: 0, max: 60 },
+  // Decimal(4, 1): waist circumference measured with a tape.
+  abdominalCircumferenceCm: { unit: "cm", decimals: 1, min: 20, max: 300 },
 };
 
 /**

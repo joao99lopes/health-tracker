@@ -21,6 +21,7 @@ import {
   classifyBmi,
   isAdultBmiApplicable,
 } from "@/lib/health/bmi-classification";
+import { classifyWaistToHeightRatio } from "@/lib/health/waist-to-height-classification";
 import { useI18n } from "@/lib/i18n/context";
 import {
   compareLatestToFirst,
@@ -70,7 +71,9 @@ import {
  * BMI comes from the weight and the height stored with each measurement, so
  * it is stable, and its WHO band is shown only where those cut-off points
  * apply. The band is set in neutral type: it names where the number falls and
- * is not coloured as good or bad.
+ * is not coloured as good or bad. The waist-to-height ratio is derived the
+ * same way, from the waist and the height stored with each measurement, and
+ * its card carries its reference band in the same neutral type.
  */
 
 /** BMI leads the page; the stored values follow in their canonical order. */
@@ -109,12 +112,15 @@ function MetricCard({
   reading,
   change,
   direction,
+  category,
 }: {
   reading: MetricReading;
   /** Against the previous measurement, or null when there is none. */
   change: MetricComparison | null;
   /** The reader's preference for this metric; presentation only. */
   direction: DirectionPreferences[Metric];
+  /** The reference band the value falls into, for metrics that have one. */
+  category: string | null;
 }) {
   const { t, language } = useI18n();
   const hydrated = useHydrated();
@@ -133,6 +139,11 @@ function MetricCard({
         <p className="text-xl font-semibold tabular-nums sm:text-2xl">
           {formatMetricValue(reading.metric, reading.value, language)}
         </p>
+        {category !== null && (
+          <p className="bg-card/70 text-foreground ring-foreground/10 w-fit rounded-full px-2 py-0.5 text-xs font-medium ring-1">
+            {category}
+          </p>
+        )}
         {/* The arrow and the number carry the change; the tint only says
             whether it went the way the reader asked for. Where there is no
             previous value for this metric there is no difference to show -
@@ -203,6 +214,14 @@ export function Dashboard({
   }
 
   const { bmi, values } = partitionReadings(latestMetricReadings(measurements));
+  /** The waist-to-height band of a reading's own (exact) value. */
+  const readingCategory = (reading: MetricReading): string | null => {
+    if (reading.metric !== "waistToHeightRatio") {
+      return null;
+    }
+    const band = classifyWaistToHeightRatio(reading.value);
+    return band === null ? null : t.measurements.waistToHeightCategories[band];
+  };
   const changes = previousChanges(measurements);
   // The band applied at the time of the measurement, from the age then.
   const category = isAdultBmiApplicable(
@@ -255,6 +274,7 @@ export function Dashboard({
                 reading={reading}
                 change={changes.get(reading.metric) ?? null}
                 direction={directions[reading.metric]}
+                category={readingCategory(reading)}
               />
             ))}
           </div>

@@ -28,7 +28,7 @@ export function isMetricDirection(value: string): value is MetricDirection {
   return (METRIC_DIRECTIONS as readonly string[]).includes(value);
 }
 
-/** One preference per metric, including the derived BMI. */
+/** One preference per metric, including the derived ones. */
 export type DirectionPreferences = Record<Metric, MetricDirection>;
 
 export const DEFAULT_DIRECTION_PREFERENCES: DirectionPreferences =

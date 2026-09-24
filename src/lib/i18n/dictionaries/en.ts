@@ -196,7 +196,12 @@ export const en = {
     goToProfile: "Go to profile",
     values: "Values",
     bmi: "BMI",
-    bmiDerived: "Derived from the weight and the height above.",
+    waistToHeightRatio: "Waist-to-height ratio",
+    derivedHint:
+      "Derived from the values and the height recorded with this measurement.",
+    howToMeasure: "How to measure",
+    abdominalCircumferenceHelp:
+      "Measure with a tape measure while standing relaxed, at the end of a normal exhalation. Keep the tape horizontal and snug without compressing the skin. Measure at the same location each time so values remain comparable.",
     view: "View",
     actions: "Actions",
     created: "Measurement added.",
@@ -214,6 +219,7 @@ export const en = {
       musclePercent: "Muscle (%)",
       boneMassKg: "Bone mass (kg)",
       visceralFat: "Visceral fat",
+      abdominalCircumferenceCm: "Waist circumference (cm)",
     },
     bmiCategories: {
       UNDERWEIGHT: "Underweight",
@@ -222,6 +228,12 @@ export const en = {
       OBESE_I: "Obese class I",
       OBESE_II: "Obese class II",
       OBESE_III: "Obese class III",
+    },
+    waistToHeightCategories: {
+      LOW: "Low",
+      HEALTHY: "Generally healthy range",
+      INCREASED: "Increased",
+      HIGH: "High",
     },
     issues: {
       MEASURED_AT_REQUIRED: "Enter the date and time of the measurement.",

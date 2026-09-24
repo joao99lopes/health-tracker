@@ -1,4 +1,5 @@
 import { BMI_DISPLAY_DECIMALS } from "@/lib/health/bmi";
+import { WAIST_TO_HEIGHT_DISPLAY_DECIMALS } from "@/lib/health/waist-to-height";
 import type { Language } from "@/lib/i18n/languages";
 import {
   MEASUREMENT_FIELD_SPECS,
@@ -23,6 +24,7 @@ import type { Metric } from "@/lib/measurements/metrics";
 const UNIT_SUFFIX: Record<string, string> = {
   kg: " kg",
   "%": "%",
+  cm: " cm",
   none: "",
 };
 
@@ -66,6 +68,20 @@ export function formatBmi(
   }).format(bmi);
 }
 
+/** A derived waist-to-height ratio, or null when there is none to show. */
+export function formatWaistToHeightRatio(
+  ratio: number | null,
+  language: Language,
+): string | null {
+  if (ratio === null) {
+    return null;
+  }
+  return new Intl.NumberFormat(language, {
+    minimumFractionDigits: WAIST_TO_HEIGHT_DISPLAY_DECIMALS,
+    maximumFractionDigits: WAIST_TO_HEIGHT_DISPLAY_DECIMALS,
+  }).format(ratio);
+}
+
 /** Height as it was recorded with a measurement. */
 export function formatHeightCm(value: number, language: Language): string {
   return `${new Intl.NumberFormat(language, {
@@ -100,8 +116,8 @@ export function formatDate(
 }
 
 /**
- * The same, for any metric - including the derived BMI, which has no stored
- * field and therefore no spec of its own.
+ * The same, for any metric - including the derived BMI and waist-to-height
+ * ratio, which have no stored field and therefore no spec of their own.
  */
 function metricUnitAndDecimals(metric: Metric): {
   unit: string;
@@ -109,6 +125,9 @@ function metricUnitAndDecimals(metric: Metric): {
 } {
   if (metric === "bmi") {
     return { unit: "none", decimals: BMI_DISPLAY_DECIMALS };
+  }
+  if (metric === "waistToHeightRatio") {
+    return { unit: "none", decimals: WAIST_TO_HEIGHT_DISPLAY_DECIMALS };
   }
   const spec = MEASUREMENT_FIELD_SPECS[metric];
   return { unit: spec.unit, decimals: spec.decimals };
