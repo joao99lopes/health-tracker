@@ -35,7 +35,8 @@ function contentSecurityPolicy(isDevelopment: boolean): string {
     "img-src": ["'self'", "blob:", "data:"],
     // next/font serves its files from this origin.
     "font-src": ["'self'"],
-    "connect-src": ["'self'"],
+    // `next dev` pushes hot reloads over a WebSocket; production has none.
+    "connect-src": ["'self'", ...(isDevelopment ? ["ws:"] : [])],
     "object-src": ["'none'"],
     "base-uri": ["'self'"],
     "form-action": ["'self'"],

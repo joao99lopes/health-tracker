@@ -35,6 +35,15 @@ test("development CSP allows eval for React's debugging build", () => {
   assert.ok(scripts.includes("'unsafe-eval'"));
 });
 
+test("only development may open WebSockets, for hot reload", () => {
+  assert.ok(
+    directive(header("Content-Security-Policy", true), "connect-src").includes("ws:"),
+  );
+  assert.ok(
+    !directive(header("Content-Security-Policy"), "connect-src").includes("ws:"),
+  );
+});
+
 test("everything is restricted to the app's own origin", () => {
   const csp = header("Content-Security-Policy");
   for (const name of ["default-src", "connect-src", "font-src", "form-action"]) {
