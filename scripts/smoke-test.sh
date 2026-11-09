@@ -29,7 +29,12 @@ trap cleanup EXIT
 
 fail() {
   echo "FAIL: $*" >&2
-  docker logs "${RUN}-app" 2>&1 | tail -30 >&2 || true
+  for container in "${RUN}-db" "${RUN}-app"; do
+    if docker inspect "$container" >/dev/null 2>&1; then
+      echo "--- last log lines of $container" >&2
+      docker logs "$container" 2>&1 | tail -30 >&2 || true
+    fi
+  done
   exit 1
 }
 
@@ -38,11 +43,19 @@ docker run -d --name "${RUN}-db" --network "$NET" \
   -e POSTGRES_USER=smoke -e POSTGRES_PASSWORD=smoke -e POSTGRES_DB=smoke \
   postgres:17-alpine >/dev/null
 
-for _ in $(seq 1 30); do
-  docker exec "${RUN}-db" pg_isready -U smoke -d smoke >/dev/null 2>&1 && break
+# Over TCP on purpose: while the image initialises a fresh volume it runs a
+# temporary server on the Unix socket only, then restarts. A socket check can
+# pass during that window and send migrate into the restart; a TCP check only
+# passes once the real server is listening. A fresh CI runner can take well
+# over 30 seconds to get there.
+db_ready() {
+  docker exec "${RUN}-db" pg_isready -h 127.0.0.1 -U smoke -d smoke >/dev/null 2>&1
+}
+for _ in $(seq 1 120); do
+  db_ready && break
   sleep 1
 done
-docker exec "${RUN}-db" pg_isready -U smoke -d smoke >/dev/null || fail "database never became ready"
+db_ready || fail "database never became ready"
 
 echo "--- migrate"
 docker run --rm --network "$NET" -e DATABASE_URL="$DB_URL" "$MIGRATE_IMAGE" \
