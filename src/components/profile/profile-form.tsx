@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useHydrated } from "@/hooks/use-hydrated";
 import {
   Select,
   SelectContent,
@@ -99,6 +100,8 @@ export function ProfileForm({
   const [issues, setIssues] = useState<ProfileIssue[]>([]);
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
   const [pending, setPending] = useState(false);
+  // A submission before hydration would be a native GET.
+  const hydrated = useHydrated();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -270,7 +273,7 @@ export function ProfileForm({
             <Button
               type="submit"
               size="lg"
-              disabled={pending}
+              disabled={pending || !hydrated}
               className="max-sm:w-full"
             >
               {pending ? t.common.saving : t.common.save}

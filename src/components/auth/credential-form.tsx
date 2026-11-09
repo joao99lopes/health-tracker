@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { normalizeEmail } from "@/lib/auth/email";
 import {
   PASSWORD_MIN_LENGTH,
@@ -91,6 +92,7 @@ export function CredentialForm({
   const [issues, setIssues] = useState<CredentialIssue[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const hydrated = useHydrated();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -125,7 +127,17 @@ export function CredentialForm({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
+        {/* Until React has hydrated, submitting would be a native form
+            submission - by default a GET that puts the password in the URL,
+            the browser history and the server log. The button stays disabled
+            until then, and `method="post"` keeps the credentials out of the
+            URL even if a submission slips through some other way. */}
+        <form
+          method="post"
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-5"
+          noValidate
+        >
           <div className="flex flex-col gap-2">
             <Label htmlFor="email">{t.auth.email}</Label>
             <Input
@@ -174,7 +186,12 @@ export function CredentialForm({
             </Alert>
           )}
 
-          <Button type="submit" size="lg" disabled={pending} className="w-full">
+          <Button
+            type="submit"
+            size="lg"
+            disabled={pending || !hydrated}
+            className="w-full"
+          >
             {pending ? t.common.saving : submitLabel}
           </Button>
         </form>

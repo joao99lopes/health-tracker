@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { ActivityIcon } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { redirect } from "next/navigation";
+import { getSessionUser } from "@/lib/auth/session";
 import { getTranslations } from "@/lib/i18n/server";
 
 /**
@@ -14,6 +16,12 @@ export default async function AuthLayout({
 }: {
   children: ReactNode;
 }) {
+  // A signed-in visitor has nothing to do here. Checked against the database
+  // rather than in the proxy: a stale cookie must not send anyone to `/`,
+  // where the app layout would send them straight back.
+  if (await getSessionUser()) {
+    redirect("/");
+  }
   const { t } = await getTranslations();
 
   return (

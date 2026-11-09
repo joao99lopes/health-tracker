@@ -73,6 +73,13 @@ code="$(curl -sS -o /dev/null -w '%{http_code}' "${ORIGIN}/")"
 [ "$code" = "307" ] || fail "/ without a session answered $code, expected 307"
 echo "ok   / redirects when signed out"
 
+# A cookie whose session does not exist must not cause a redirect loop
+# between /login and /.
+code="$(curl -sS -o /dev/null -w '%{http_code}' \
+  -H "Cookie: better-auth.session_token=stale.invalid" "${ORIGIN}/login")"
+[ "$code" = "200" ] || fail "/login with a stale session cookie answered $code, expected 200"
+echo "ok   a stale session cookie does not loop"
+
 code="$(curl -sS -o /dev/null -w '%{http_code}' -X POST "${ORIGIN}/api/auth/sign-up/email" \
   -H "Origin: ${ORIGIN}" -H "Content-Type: application/json" \
   -d '{"email":"smoke@example.test","password":"smoke-test-password-1","name":""}')"
