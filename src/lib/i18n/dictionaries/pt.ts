@@ -123,6 +123,14 @@ export const pt: Dictionary = {
     },
   },
 
+  data: {
+    title: "Os seus dados",
+    description:
+      "Descarregue tudo o que registou. O CSV contém as suas medições e pode ser importado de novo; o JSON inclui também o seu perfil.",
+    exportCsv: "Descarregar CSV",
+    exportJson: "Descarregar JSON",
+  },
+
   profile: {
     title: "Perfil",
     description:

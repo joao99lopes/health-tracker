@@ -124,6 +124,14 @@ export const en = {
     },
   },
 
+  data: {
+    title: "Your data",
+    description:
+      "Download everything you have recorded. The CSV holds your measurements and can be imported again; the JSON also includes your profile.",
+    exportCsv: "Download CSV",
+    exportJson: "Download JSON",
+  },
+
   profile: {
     title: "Profile",
     description:

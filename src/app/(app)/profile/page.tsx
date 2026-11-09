@@ -1,3 +1,4 @@
+import { DataSection } from "@/components/profile/data-section";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth/session";
@@ -17,6 +18,8 @@ export default async function ProfilePage() {
       <PageHeader title={t.profile.title} description={t.profile.description} />
 
       <ProfileForm profile={profile} fallbackLanguage={language} />
+
+      <DataSection />
     </div>
   );
 }
