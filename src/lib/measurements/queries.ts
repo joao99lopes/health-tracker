@@ -86,6 +86,39 @@ export async function listMeasurements(
   return rows.map(toMeasurement);
 }
 
+/** The instants (ms since epoch) of every measurement this user has. */
+export async function listMeasurementInstants(
+  userId: string,
+): Promise<Set<number>> {
+  const rows = await prisma.measurement.findMany({
+    where: { userId },
+    select: { measuredAt: true },
+  });
+  return new Set(rows.map((row) => row.measuredAt.getTime()));
+}
+
+/**
+ * Inserts many measurements at once, all or none.
+ *
+ * Each row brings its own `heightCmAtMeasurement`: an imported history keeps
+ * the height every reading was taken at.
+ */
+export async function createMeasurements(
+  userId: string,
+  rows: ReadonlyArray<ParsedMeasurement & { heightCmAtMeasurement: number }>,
+): Promise<number> {
+  const result = await prisma.measurement.createMany({
+    data: rows.map((row) => ({
+      userId,
+      measuredAt: row.measuredAt,
+      heightCmAtMeasurement: row.heightCmAtMeasurement,
+      note: row.note,
+      ...valueData(row.values),
+    })),
+  });
+  return result.count;
+}
+
 /** One measurement, or null when it does not exist or is not this user's. */
 export async function getMeasurement(
   userId: string,

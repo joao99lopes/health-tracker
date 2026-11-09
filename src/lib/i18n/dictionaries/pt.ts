@@ -129,6 +129,40 @@ export const pt: Dictionary = {
       "Descarregue tudo o que registou. O CSV contém as suas medições e pode ser importado de novo; o JSON inclui também o seu perfil.",
     exportCsv: "Descarregar CSV",
     exportJson: "Descarregar JSON",
+    importTitle: "Importar medições",
+    importDescription:
+      "Um CSV no mesmo formato do ficheiro descarregado. As medições já registadas no mesmo instante são ignoradas; se alguma linha tiver um problema, nada é importado.",
+    importChoose: "Escolher um ficheiro CSV",
+    importReady: (count: number) =>
+      count === 1
+        ? "1 medição pronta a importar."
+        : `${count} medições prontas a importar.`,
+    importConfirm: "Importar",
+    importing: "A importar…",
+    importCancel: "Escolher outro ficheiro",
+    imported: (count: number, skipped: number) =>
+      `${count === 1 ? "1 medição importada" : `${count} medições importadas`}` +
+      (skipped > 0 ? `; ${skipped} já registada(s) e ignorada(s).` : "."),
+    importFailed: "Não foi possível importar o ficheiro. Tente novamente.",
+    importProblems: (shown: number, total: number) =>
+      total > shown
+        ? `Nada foi importado. Os primeiros ${shown} de ${total} problemas:`
+        : "Nada foi importado. Corrija estes problemas e tente novamente:",
+    importIssues: {
+      line: (line: number) => `Linha ${line}:`,
+      FILE_EMPTY: "O ficheiro não tem medições.",
+      FILE_TOO_LARGE: "O ficheiro é demasiado grande.",
+      TOO_MANY_ROWS: "O ficheiro tem demasiadas linhas.",
+      MALFORMED: "Não foi possível ler o ficheiro como CSV (há aspas por fechar).",
+      MISSING_MEASURED_AT_COLUMN: "O cabeçalho não tem a coluna measuredAt.",
+      UNKNOWN_COLUMN: (name: string) => `Coluna desconhecida "${name}".`,
+      DUPLICATE_COLUMN: (name: string) => `A coluna "${name}" aparece duas vezes.`,
+      WRONG_CELL_COUNT: "Esta linha não tem uma célula por coluna.",
+      HEIGHT_INVALID: "A altura não é um valor plausível em centímetros.",
+      HEIGHT_REQUIRED:
+        "Esta linha não tem altura e não há altura no perfil. Complete primeiro o seu perfil.",
+      DUPLICATE_IN_FILE: "Outra linha do ficheiro tem a mesma data e hora.",
+    },
   },
 
   profile: {

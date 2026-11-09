@@ -19,7 +19,7 @@ export default async function ProfilePage() {
 
       <ProfileForm profile={profile} fallbackLanguage={language} />
 
-      <DataSection />
+      <DataSection profileHeightCm={profile?.heightCm ?? null} />
     </div>
   );
 }

@@ -130,6 +130,40 @@ export const en = {
       "Download everything you have recorded. The CSV holds your measurements and can be imported again; the JSON also includes your profile.",
     exportCsv: "Download CSV",
     exportJson: "Download JSON",
+    importTitle: "Import measurements",
+    importDescription:
+      "A CSV in the same format as the download. Measurements already recorded at the same instant are skipped; if any row has a problem, nothing is imported.",
+    importChoose: "Choose a CSV file",
+    importReady: (count: number) =>
+      count === 1
+        ? "1 measurement is ready to import."
+        : `${count} measurements are ready to import.`,
+    importConfirm: "Import",
+    importing: "Importing…",
+    importCancel: "Choose another file",
+    imported: (count: number, skipped: number) =>
+      `${count === 1 ? "1 measurement" : `${count} measurements`} imported` +
+      (skipped > 0 ? `, ${skipped} already recorded and skipped.` : "."),
+    importFailed: "Could not import the file. Please try again.",
+    importProblems: (shown: number, total: number) =>
+      total > shown
+        ? `Nothing was imported. The first ${shown} of ${total} problems:`
+        : "Nothing was imported. Fix these problems and try again:",
+    importIssues: {
+      line: (line: number) => `Line ${line}:`,
+      FILE_EMPTY: "The file has no measurements.",
+      FILE_TOO_LARGE: "The file is too large.",
+      TOO_MANY_ROWS: "The file has too many rows.",
+      MALFORMED: "The file could not be read as CSV (a quote is never closed).",
+      MISSING_MEASURED_AT_COLUMN: "The header has no measuredAt column.",
+      UNKNOWN_COLUMN: (name: string) => `Unknown column "${name}".`,
+      DUPLICATE_COLUMN: (name: string) => `Column "${name}" appears twice.`,
+      WRONG_CELL_COUNT: "This row does not have one cell per column.",
+      HEIGHT_INVALID: "The height is not a plausible value in centimetres.",
+      HEIGHT_REQUIRED:
+        "No height in this row and no profile height to use. Complete your profile first.",
+      DUPLICATE_IN_FILE: "Another row in the file has the same date and time.",
+    },
   },
 
   profile: {
