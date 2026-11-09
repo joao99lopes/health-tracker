@@ -93,6 +93,14 @@ export const pt: Dictionary = {
     current: "Atual",
     previous: "Anterior",
     first: "Primeiro",
+    movingAverage: "Média móvel",
+    movingAverageOff: "Desligada",
+    movingAverageWindow: (days: number) => `${days} dias`,
+    movingAverageLegend: (days: number) => `Média de ${days} dias`,
+    compareWith: "Comparar com",
+    compareNone: "Nenhuma",
+    compareNoData: (metric: string) =>
+      `${metric} não tem valores registados neste período.`,
   },
 
   auth: {

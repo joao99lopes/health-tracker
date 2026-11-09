@@ -22,9 +22,13 @@ import { METRICS, isMetric, type Metric } from "@/lib/measurements/metrics";
 import type { Measurement } from "@/lib/measurements/queries";
 import type { DirectionPreferences } from "@/lib/preferences/direction";
 import {
+  MOVING_AVERAGE_WINDOWS,
   buildMetricSeries,
+  buildMovingAverage,
   hasAnyPoints,
   hasEnoughPoints,
+  isMovingAverageWindow,
+  type MovingAverageWindow,
   type SeriesPoint,
 } from "@/lib/measurements/series";
 import {
@@ -47,6 +51,9 @@ import {
 
 /** The metric shown before the user picks one. */
 const DEFAULT_METRIC: Metric = "weightKg";
+
+/** Select value for "no moving average" and "no comparison". */
+const OFF = "off";
 
 function Reading({
   label,
@@ -90,10 +97,34 @@ export function EvolutionSection({
   const { t } = useI18n();
   const [metric, setMetric] = useState<Metric>(DEFAULT_METRIC);
   const [period, setPeriod] = useState<PeriodKey>(DEFAULT_PERIOD);
+  // Both extras start off: the default chart is the readings and nothing else.
+  const [averageWindow, setAverageWindow] =
+    useState<MovingAverageWindow | null>(null);
+  const [compareMetric, setCompareMetric] = useState<Metric | null>(null);
+  // Comparing a metric with itself says nothing; picking the compared one as
+  // the main metric drops the comparison.
+  const secondaryMetric = compareMetric === metric ? null : compareMetric;
 
   const series = useMemo(
     () => buildMetricSeries(measurements, metric, period, now),
     [measurements, metric, period, now],
+  );
+  const average = useMemo(
+    () =>
+      averageWindow === null
+        ? null
+        : {
+            window: averageWindow,
+            points: buildMovingAverage(measurements, series, averageWindow),
+          },
+    [measurements, series, averageWindow],
+  );
+  const secondary = useMemo(
+    () =>
+      secondaryMetric === null
+        ? null
+        : buildMetricSeries(measurements, secondaryMetric, period, now),
+    [measurements, secondaryMetric, period, now],
   );
 
   // The first reading is the current one when there is only one; showing it
@@ -102,13 +133,13 @@ export function EvolutionSection({
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <SectionHeader
           title={t.charts.title}
           description={t.charts.description}
         />
 
-        <div className="grid shrink-0 grid-cols-2 gap-3 sm:flex sm:items-end">
+        <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end lg:shrink-0">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="chart-metric" className="text-xs">
               {t.charts.metric}
@@ -158,6 +189,55 @@ export function EvolutionSection({
               </SelectContent>
             </Select>
           </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="chart-average" className="text-xs">
+              {t.charts.movingAverage}
+            </Label>
+            <Select
+              value={averageWindow === null ? OFF : String(averageWindow)}
+              onValueChange={(value) => {
+                const days = Number(value);
+                setAverageWindow(isMovingAverageWindow(days) ? days : null);
+              }}
+            >
+              <SelectTrigger id="chart-average" className="w-full sm:w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={OFF}>{t.charts.movingAverageOff}</SelectItem>
+                {MOVING_AVERAGE_WINDOWS.map((days) => (
+                  <SelectItem key={days} value={String(days)}>
+                    {t.charts.movingAverageWindow(days)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="chart-compare" className="text-xs">
+              {t.charts.compareWith}
+            </Label>
+            <Select
+              value={secondaryMetric ?? OFF}
+              onValueChange={(value) => {
+                setCompareMetric(isMetric(value) ? value : null);
+              }}
+            >
+              <SelectTrigger id="chart-compare" className="w-full sm:w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={OFF}>{t.charts.compareNone}</SelectItem>
+                {METRICS.filter((option) => option !== metric).map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {metricLabel(t, option)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -187,7 +267,19 @@ export function EvolutionSection({
 
           {hasAnyPoints(series) ? (
             <>
-              <MetricChart series={series} direction={directions[metric]} />
+              <MetricChart
+                series={series}
+                direction={directions[metric]}
+                average={average}
+                secondary={secondary}
+              />
+              {/* A chosen comparison with nothing to draw says so, rather
+                  than silently showing one line. */}
+              {secondary !== null && !hasAnyPoints(secondary) && (
+                <p className="text-muted-foreground text-xs">
+                  {t.charts.compareNoData(metricLabel(t, secondary.metric))}
+                </p>
+              )}
               {/* One reading is worth drawing, but it is not an evolution.
                   Say which of the two this is. */}
               {!hasEnoughPoints(series) && (

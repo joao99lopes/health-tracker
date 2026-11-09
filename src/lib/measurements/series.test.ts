@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { MeasurementSnapshot } from "./metrics.ts";
-import { buildMetricSeries, hasAnyPoints, hasEnoughPoints } from "./series.ts";
+import {
+  buildChartRows,
+  buildMetricSeries,
+  buildMovingAverage,
+  hasAnyPoints,
+  hasEnoughPoints,
+} from "./series.ts";
 
 const NOW = new Date("2026-09-18T12:00:00.000Z");
 
@@ -236,4 +242,90 @@ test("one waist circumference is already a point to draw", () => {
   assert.equal(hasAnyPoints(series), true);
   assert.equal(series.points.length, 1);
   assert.equal(hasEnoughPoints(series), false);
+});
+
+// --- moving average ---------------------------------------------------------
+
+test("the moving average is the mean of the readings in the trailing window", () => {
+  const measurements = [
+    snapshot("2026-09-01T08:00:00.000Z", { weightKg: 80 }),
+    snapshot("2026-09-05T08:00:00.000Z", { weightKg: 82 }),
+    snapshot("2026-09-09T08:00:00.000Z", { weightKg: 78 }),
+  ];
+  const series = buildMetricSeries(measurements, "weightKg", "1m", NOW);
+  assert.deepEqual(
+    buildMovingAverage(measurements, series, 7).map((p) => p.value),
+    // Sep 1: itself. Sep 5: Sep 1 + Sep 5. Sep 9: Sep 5 + Sep 9 (Sep 1 is 8 days back).
+    [80, 81, 80],
+  );
+});
+
+test("readings before the period count towards the window", () => {
+  const measurements = [
+    snapshot("2026-09-10T08:00:00.000Z", { weightKg: 90 }),
+    snapshot("2026-09-16T08:00:00.000Z", { weightKg: 80 }),
+  ];
+  const series = buildMetricSeries(measurements, "weightKg", "3d", NOW);
+  assert.deepEqual(series.points.map((p) => p.value), [80]);
+  assert.deepEqual(
+    buildMovingAverage(measurements, series, 7).map((p) => p.value),
+    [85],
+  );
+});
+
+test("the moving average has one point per reading, at the reading's time", () => {
+  const measurements = [
+    snapshot("2026-09-01T08:00:00.000Z", { weightKg: 80 }),
+    snapshot("2026-09-02T08:00:00.000Z", { bodyFatPercent: 20 }),
+    snapshot("2026-09-03T08:00:00.000Z", { weightKg: 82 }),
+  ];
+  const series = buildMetricSeries(measurements, "weightKg", "1m", NOW);
+  const average = buildMovingAverage(measurements, series, 30);
+  assert.deepEqual(
+    average.map((p) => p.time),
+    series.points.map((p) => p.time),
+  );
+  assert.deepEqual(average.map((p) => p.value), [80, 81]);
+});
+
+test("a reading exactly one window old has left the window", () => {
+  const measurements = [
+    snapshot("2026-09-01T08:00:00.000Z", { weightKg: 70 }),
+    snapshot("2026-09-08T08:00:00.000Z", { weightKg: 80 }),
+  ];
+  const series = buildMetricSeries(measurements, "weightKg", "1m", NOW);
+  assert.deepEqual(
+    buildMovingAverage(measurements, series, 7).map((p) => p.value),
+    [70, 80],
+  );
+});
+
+// --- chart rows ---------------------------------------------------------------
+
+test("chart rows merge series by instant, leaving gaps where nothing was read", () => {
+  const at = (iso: string, value: number) => {
+    const measuredAt = new Date(iso);
+    return { time: measuredAt.getTime(), measuredAt, value };
+  };
+  const rows = buildChartRows(
+    [at("2026-09-01T08:00:00Z", 80), at("2026-09-03T08:00:00Z", 81)],
+    [at("2026-09-01T08:00:00Z", 80), at("2026-09-03T08:00:00Z", 80.5)],
+    [at("2026-09-02T08:00:00Z", 20), at("2026-09-03T08:00:00Z", 21)],
+  );
+  assert.deepEqual(
+    rows.map(({ primary, average, secondary }) => ({ primary, average, secondary })),
+    [
+      { primary: 80, average: 80, secondary: undefined },
+      { primary: undefined, average: undefined, secondary: 20 },
+      { primary: 81, average: 80.5, secondary: 21 },
+    ],
+  );
+});
+
+test("without extras, chart rows are just the primary series", () => {
+  const measuredAt = new Date("2026-09-01T08:00:00Z");
+  assert.deepEqual(
+    buildChartRows([{ time: measuredAt.getTime(), measuredAt, value: 80 }], null, null),
+    [{ time: measuredAt.getTime(), measuredAt, primary: 80 }],
+  );
 });

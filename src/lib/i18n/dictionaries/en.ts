@@ -92,6 +92,14 @@ export const en = {
     current: "Current",
     previous: "Previous",
     first: "First",
+    movingAverage: "Moving average",
+    movingAverageOff: "Off",
+    movingAverageWindow: (days: number) => `${days} days`,
+    movingAverageLegend: (days: number) => `${days}-day average`,
+    compareWith: "Compare with",
+    compareNone: "None",
+    compareNoData: (metric: string) =>
+      `${metric} has no recorded value in this period.`,
   },
 
   auth: {

@@ -18,7 +18,9 @@ import {
  * measurement's own `heightCmAtMeasurement`, so a change of height today does
  * not bend the curve behind it.
  *
- * Nothing here extrapolates, smooths or forecasts. The series is the readings.
+ * Nothing here extrapolates or forecasts. The series is the readings. The one
+ * derived line, the moving average below, is opt-in, drawn apart from the
+ * readings and labelled as an average - it never replaces them.
  *
  * This module is pure: no Prisma, no React, no environment access.
  */
@@ -58,7 +60,7 @@ const DOMAIN_PADDING = 0.05;
 /** A series needs two readings before there is any evolution to look at. */
 export const MIN_SERIES_POINTS = 2;
 
-function paddedDomain(values: readonly number[]): [number, number] | null {
+export function paddedDomain(values: readonly number[]): [number, number] | null {
   if (values.length === 0) {
     return null;
   }
@@ -123,4 +125,104 @@ export function hasAnyPoints(series: MetricSeries): boolean {
  */
 export function hasEnoughPoints(series: MetricSeries): boolean {
   return series.points.length >= MIN_SERIES_POINTS;
+}
+
+// ---------------------------------------------------------------------------
+// Moving average and the combined chart rows
+// ---------------------------------------------------------------------------
+
+/**
+ * The moving-average windows offered, in days, defined once.
+ *
+ * Windows are spans of time, not counts of readings: readings arrive
+ * irregularly, and "the last 7 readings" could cover a week or a season.
+ */
+export const MOVING_AVERAGE_WINDOWS = [7, 30] as const;
+
+export type MovingAverageWindow = (typeof MOVING_AVERAGE_WINDOWS)[number];
+
+export function isMovingAverageWindow(value: number): value is MovingAverageWindow {
+  return (MOVING_AVERAGE_WINDOWS as readonly number[]).includes(value);
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * The trailing mean at each of `series`'s points: the average of every
+ * recorded value of the metric in the `windowDays` up to and including that
+ * reading.
+ *
+ * Readings from *before* the period count towards the window, so the first
+ * points of a short period are averaged over a full window rather than over
+ * whatever happens to fall inside the period. It is a plain arithmetic mean of
+ * recorded values - no weighting, no interpolation, nothing drawn where there
+ * is no reading.
+ */
+export function buildMovingAverage(
+  measurements: readonly MeasurementSnapshot[],
+  series: MetricSeries,
+  windowDays: MovingAverageWindow,
+): SeriesPoint[] {
+  const history: Array<{ time: number; value: number }> = [];
+  for (const snapshot of sortByMeasuredAt(measurements)) {
+    const value = metricValue(snapshot, series.metric);
+    if (value !== null) {
+      history.push({ time: snapshot.measuredAt.getTime(), value });
+    }
+  }
+
+  const windowMs = windowDays * MS_PER_DAY;
+  let start = 0;
+  let end = 0;
+  let sum = 0;
+  return series.points.map((point) => {
+    // Both edges only move forward: points and history are both ascending.
+    for (let next = history[end]; next && next.time <= point.time; next = history[end]) {
+      sum += next.value;
+      end++;
+    }
+    for (
+      let oldest = history[start];
+      oldest && start < end && oldest.time <= point.time - windowMs;
+      oldest = history[start]
+    ) {
+      sum -= oldest.value;
+      start++;
+    }
+    return { ...point, value: sum / (end - start) };
+  });
+}
+
+/** One row of the combined chart; a missing key means nothing at that time. */
+export type ChartRow = {
+  time: number;
+  measuredAt: Date;
+  primary?: number;
+  average?: number;
+  secondary?: number;
+};
+
+/**
+ * The primary series, its moving average and a second metric merged into one
+ * time-ordered table, which is what the chart component plots. Readings taken
+ * at the same instant share a row.
+ */
+export function buildChartRows(
+  primary: readonly SeriesPoint[],
+  average: readonly SeriesPoint[] | null,
+  secondary: readonly SeriesPoint[] | null,
+): ChartRow[] {
+  const rows = new Map<number, ChartRow>();
+  const row = (point: SeriesPoint): ChartRow => {
+    let existing = rows.get(point.time);
+    if (!existing) {
+      existing = { time: point.time, measuredAt: point.measuredAt };
+      rows.set(point.time, existing);
+    }
+    return existing;
+  };
+  for (const point of primary) row(point).primary = point.value;
+  for (const point of average ?? []) row(point).average = point.value;
+  for (const point of secondary ?? []) row(point).secondary = point.value;
+  return [...rows.values()].sort((a, b) => a.time - b.time);
 }
