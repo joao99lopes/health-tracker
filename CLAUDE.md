@@ -182,7 +182,7 @@ published port at all. The dev file is deliberately not named
 `docker-compose.override.yml`, which Compose would load implicitly — including
 on the Raspberry Pi.
 
-Prisma is pinned to **7.10.0**. Do not run a bare `npm install prisma` - the
+Prisma is pinned to **7.10.1**. Do not run a bare `npm install prisma` - the
 registry's `latest` tag currently points at an 8.0 release candidate.
 
 Prisma 7 changed two things that older examples get wrong:
@@ -233,22 +233,43 @@ missing. Read configuration from there, not from `process.env`.
 `docker compose up -d --build` runs the whole stack; only `app` publishes a
 LAN-reachable port.
 
-Three things there are deliberate and easy to undo by accident:
+Base image is `node:22-alpine`. Two targets matter: `runner` (the app,
+GHCR `:latest` / `:<sha>`) and `builder` (the migration job, GHCR
+`:migrate`). The stage that runs `next build` is called `build`.
 
-- The builder stage sets **placeholder** `DATABASE_URL` and
+Things there are deliberate and easy to undo by accident:
+
+- The `build` stage sets **placeholder** `DATABASE_URL` and
   `BETTER_AUTH_SECRET`. `prisma generate` and `next build` both read them while
   evaluating module scope, and neither connects to anything. Real values are
   injected at run time.
 - The runtime image has **no Prisma CLI** - it pulls in `effect`, `mysql2` and
   more. Migrations run from the one-shot `migrate` service, which uses the
-  builder stage and which `app` waits on via `service_completed_successfully`.
+  `builder` target and which `app` waits on via `service_completed_successfully`.
+- `builder` is **not** the build stage: it installs only the Prisma CLI at the
+  version `package.json` pins, plus the schema and migrations. Reusing the
+  build stage made the `:migrate` image over 2 GB on the Pi.
 - Do not copy `node_modules/.bin/prisma` into an image: `COPY` flattens the
   symlink and its relative `require("./cli.js")` then fails. Call
   `node node_modules/prisma/build/index.js` instead.
+- `sharp` is deleted from the standalone bundle and `images.unoptimized` is
+  set. Nothing uses `next/image`; if that changes, both must go.
+- The runner sets `NODE_OPTIONS=--max-old-space-size=320` for the 512 MB
+  container limit on the Pi.
 
-**Build the image on the machine that runs it.** The base images are multi-arch,
-so an amd64 laptop and an arm64 Raspberry Pi each build natively - no emulation
-and no `binaryTargets` juggling for Prisma's query engine.
+Images are built in GitHub Actions (`.github/workflows/docker-arm64.yml`) on
+a native arm64 runner, never on the Pi. Nothing is pushed until lint, tests
+and `scripts/smoke-test.sh` pass, and `:migrate` is pushed before `:latest`.
+Run the smoke test locally with
+`scripts/smoke-test.sh <app-image> <migrate-image>`.
+
+Security headers (CSP and friends) are defined in
+`src/lib/security/headers.ts` and applied in `next.config.ts`. The app is
+served over plain HTTP on the LAN, so there is no HSTS and no
+`upgrade-insecure-requests` - add both if it ever moves to HTTPS.
+
+The Prisma pool (`src/lib/db.ts`) is capped at 5 connections, and the
+compose file runs PostgreSQL with `shared_buffers=64MB`, `max_connections=20`.
 
 ### UI components
 
@@ -260,15 +281,18 @@ npx shadcn@latest add <component>
 ```
 
 They land in `src/components/ui/` and are ours to edit. Application components
-live in `src/components/`. This shadcn version pulls `cn` and `shadcn` as
-runtime dependencies on purpose — `globals.css` imports `shadcn/tailwind.css`.
+live in `src/components/`. `cn` is a runtime dependency; `shadcn` and
+`tw-animate-css` are devDependencies - `globals.css` imports their CSS at build
+time only, and the `shadcn` CLI drags in an MCP server and other packages
+with open advisories that have no place in production. All versions in
+`package.json` are exact; keep them that way.
 
 Dark mode is not wired up yet: the tokens exist and the `dark` variant keys off
 a `.dark` class, but nothing sets it. That belongs with the UI phase.
 
 ### Authentication
 
-**better-auth 1.7.5**, email and password only. No social login, no password
+**better-auth 1.7.18**, email and password only. No social login, no password
 reset, no email verification — all deliberately out of scope.
 
 - `src/lib/auth.ts` — server instance. The Prisma adapter, the password policy
@@ -276,7 +300,7 @@ reset, no email verification — all deliberately out of scope.
 - `src/lib/auth/session.ts` — `requireUser()` / `getSessionUser()`. **This is
   the authoritative check.** Every route or query touching user data calls
   `requireUser()` and scopes on the id it returns.
-- `src/middleware.ts` — optimistic only. It checks that a session *cookie
+- `src/proxy.ts` (Next 16 renamed middleware to proxy) — optimistic only. It checks that a session *cookie
   exists*, nothing more, to avoid rendering a protected page for a signed-out
   visitor. It is not access control.
 - `src/lib/auth/credentials.ts` — email and password rules shared by the form

@@ -1,9 +1,15 @@
 node_modules
 .next
 .git
-.env
-.env*.local
+.github
+.claude
+# Every env file, whatever its suffix - only the committed example is safe.
+.env*
+!.env.example
 npm-debug.log*
 *.tsbuildinfo
+coverage
 Dockerfile
 .dockerignore
+docker-compose*.yml
+*.md

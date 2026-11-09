@@ -291,12 +291,11 @@ assumption:
 | Check | Result |
 | ----- | ------ |
 | `postgres:17-alpine` (`db`) | publishes `linux/arm64`; runs as `aarch64`, PostgreSQL 17.11 |
-| `node:22-bookworm-slim` (`Dockerfile`) | publishes `linux/arm64`; runs as `aarch64`, Node arm64 v22.23.2 |
-| Platform pins | none — no `platform:` in either compose file, no `--platform` in the Dockerfile |
-| Native npm packages | `@next/swc`, `@tailwindcss/oxide`, `lightningcss`, `@unrs/resolver`, `sharp` — all ship `linux-arm64` builds, at full parity with x64 in `package-lock.json` |
-| Prisma query engine | `binaryTargets = ["native"]`, resolved at generate time on the machine that builds |
-| OpenSSL | genuinely absent from `node:*-slim`; the Dockerfile installs it explicitly in the base stage, which Prisma requires |
+| `node:22-alpine` (`Dockerfile`) | publishes `linux/arm64/v8`; Node v22.23.4 |
+| Platform pins | none in the compose files or the Dockerfile; CI passes `platforms: linux/arm64` |
+| Native npm packages | `@next/swc`, `@tailwindcss/oxide`, `lightningcss`, `@unrs/resolver` ship `linux-arm64` and musl builds; they run only at build time |
+| Prisma at run time | Prisma 7 queries through a WebAssembly query compiler and the `pg` driver adapter — no native engine, no OpenSSL, so musl (alpine) works |
+| `sharp` | not shipped: `images.unoptimized` is set and the Dockerfile deletes it from the standalone bundle |
 
-Because everything resolves on the build machine, the rule is simply: **build
-the image on the machine that runs it.** An amd64 laptop and an arm64 Pi each
-produce a correct native image with no emulation and no extra configuration.
+The images are built natively on an arm64 GitHub Actions runner, so nothing is
+emulated. An amd64 development machine builds the same Dockerfile natively too.

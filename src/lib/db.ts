@@ -14,8 +14,21 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+/**
+ * Connection pool sizing for a Raspberry Pi with 2 GB of RAM shared with
+ * PostgreSQL. One or two users never need more than a handful of concurrent
+ * queries, and every idle connection costs PostgreSQL several MB, so the pool
+ * is small and lets connections go after a quiet minute.
+ */
+const POOL_MAX_CONNECTIONS = 5;
+const POOL_IDLE_TIMEOUT_MS = 60_000;
+
 function createClient(): PrismaClient {
-  const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
+  const adapter = new PrismaPg({
+    connectionString: env.DATABASE_URL,
+    max: POOL_MAX_CONNECTIONS,
+    idleTimeoutMillis: POOL_IDLE_TIMEOUT_MS,
+  });
   return new PrismaClient({
     adapter,
     log: env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],

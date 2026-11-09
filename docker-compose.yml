@@ -24,14 +24,25 @@ services:
     # docker-compose.dev.yml for the development port.
     volumes:
       - db_data:/var/lib/postgresql/data
+    # Sized for a 384 MB container on a 2 GB Raspberry Pi. The defaults
+    # (128 MB of shared buffers, 100 connections) assume a server; the app's
+    # pool opens at most 5 connections, and the rest is headroom for the
+    # migrate job, backups and an occasional psql.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=64MB
+      - -c
+      - max_connections=20
+    mem_limit: 384m
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-health} -d ${POSTGRES_DB:-health_tracker}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # One-shot: applies pending migrations, then exits. Uses the builder stage
-  # because that is where the Prisma CLI and its dependencies live.
+  # One-shot: applies pending migrations, then exits. The `builder` target
+  # holds only the Prisma CLI, the schema and the migrations.
   migrate:
     build:
       context: .
@@ -64,6 +75,10 @@ services:
     # The only service published beyond the host. LAN only for now.
     ports:
       - "3000:3000"
+    # The image caps the Node heap at 320 MB (NODE_OPTIONS in the Dockerfile),
+    # leaving the rest of this limit for buffers and native memory. The image
+    # also carries its own HEALTHCHECK (GET /login).
+    mem_limit: 512m
 
 volumes:
   db_data:

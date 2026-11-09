@@ -7,7 +7,7 @@ import { auth } from "@/lib/auth";
 /**
  * Server-side session access.
  *
- * This is the authoritative check. Middleware only looks at whether a session
+ * This is the authoritative check. The proxy only looks at whether a session
  * cookie exists, which is enough to redirect early but proves nothing - every
  * route that reads user data must call `requireUser`.
  */

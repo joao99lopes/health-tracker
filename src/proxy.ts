@@ -9,7 +9,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * first. Authorisation is enforced server-side in the (app) layout and in
  * every data query; never rely on this for access control.
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const hasSessionCookie = getSessionCookie(request) !== null;
   const { pathname } = request.nextUrl;
   const isAuthPage = pathname === "/login" || pathname === "/register";

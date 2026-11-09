@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth/session";
 /**
  * Everything under this layout requires a session.
  *
- * This is the authoritative server-side check - middleware only inspects the
+ * This is the authoritative server-side check - the proxy only inspects the
  * cookie's presence.
  */
 export default async function AppLayout({ children }: LayoutProps<"/">) {
