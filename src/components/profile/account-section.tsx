@@ -31,14 +31,17 @@ import {
   PASSWORD_MIN_LENGTH,
   validateNewPassword,
 } from "@/lib/auth/credentials";
+import { signOutAction } from "@/app/(auth)/actions";
 import { useBrowserAuth, type AuthOutcome } from "@/lib/firebase/client";
 import { useTranslations } from "@/lib/i18n/context";
 import type { Dictionary } from "@/lib/i18n/dictionary";
 
 /**
  * Account management on the profile page: change the password, delete the
- * account. Both ask for the current password, because both are exactly what
- * someone holding an unlocked phone should not be able to do alone.
+ * account. Both are what someone holding an unlocked phone should not be able
+ * to do alone: changing the password asks for the current one, and deleting
+ * needs a sign-in from the last few minutes (by whichever method), so a
+ * session left open for days is asked to sign in again first.
  */
 
 function failureMessage(t: Dictionary, outcome: AuthOutcome): string | null {
@@ -101,6 +104,9 @@ function ChangePasswordForm({ email }: { email: string }) {
         <p className="text-muted-foreground text-sm">
           {t.account.changePasswordDescription}
         </p>
+        <p className="text-muted-foreground text-xs">
+          {t.account.emailLinkHint}
+        </p>
       </div>
       {/* Lets password managers file the change under the right account. */}
       <input type="email" name="username" autoComplete="username" value={email} readOnly hidden />
@@ -151,30 +157,27 @@ function ChangePasswordForm({ email }: { email: string }) {
   );
 }
 
-function DeleteAccountDialog({ email }: { email: string }) {
+function DeleteAccountDialog() {
   const t = useTranslations();
   const auth = useBrowserAuth();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [password, setPassword] = useState("");
-  const [failure, setFailure] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const [state, setState] = useState<"idle" | "pending" | "stale" | "failed">("idle");
 
   async function handleDelete() {
-    if (password.length === 0) {
-      setFailure(t.auth.issues.PASSWORD_REQUIRED);
+    setState("pending");
+    const outcome = await auth.deleteAccount();
+    if (outcome.status === "ok") {
+      setOpen(false);
+      router.replace("/login");
+      router.refresh();
       return;
     }
-    setPending(true);
-    setFailure(null);
-    const outcome = await auth.deleteAccount(email, password);
-    setPending(false);
-    const message = failureMessage(t, outcome);
-    if (message !== null) {
-      setFailure(message);
-      return;
-    }
-    setOpen(false);
+    setState(outcome.status === "stale" ? "stale" : "failed");
+  }
+
+  async function signInAgain() {
+    await signOutAction();
     router.replace("/login");
     router.refresh();
   }
@@ -185,8 +188,7 @@ function DeleteAccountDialog({ email }: { email: string }) {
       onOpenChange={(next) => {
         setOpen(next);
         if (!next) {
-          setPassword("");
-          setFailure(null);
+          setState("idle");
         }
       }}
     >
@@ -203,45 +205,60 @@ function DeleteAccountDialog({ email }: { email: string }) {
           </AlertDialogMedia>
           <AlertDialogTitle>{t.account.deleteConfirmTitle}</AlertDialogTitle>
           <AlertDialogDescription>
-            {t.account.deleteConfirmDescription}
+            {state === "stale"
+              ? t.account.deleteNeedsRecentSignIn
+              : t.account.deleteConfirmDescription}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="delete-password">{t.auth.password}</Label>
-          <Input
-            id="delete-password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-        </div>
-        {failure !== null && (
+        {state === "failed" && (
           <p role="alert" className="text-destructive text-sm">
-            {failure}
+            {t.auth.errors.failed}
           </p>
         )}
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={pending}>{t.common.cancel}</AlertDialogCancel>
-          <AlertDialogAction
-            variant="destructive"
-            onClick={(event) => {
-              // Stay open until the server answers, so a wrong password can
-              // be reported instead of vanishing with the dialog.
-              event.preventDefault();
-              void handleDelete();
-            }}
-            disabled={pending}
-          >
-            {pending ? t.account.deleting : t.account.deleteConfirm}
-          </AlertDialogAction>
+          <AlertDialogCancel disabled={state === "pending"}>
+            {t.common.cancel}
+          </AlertDialogCancel>
+          {state === "stale" ? (
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void signInAgain();
+              }}
+            >
+              {t.account.signInAgain}
+            </AlertDialogAction>
+          ) : (
+            <AlertDialogAction
+              variant="destructive"
+              onClick={(event) => {
+                // Stay open until the server answers, so a refusal can be
+                // explained instead of vanishing with the dialog.
+                event.preventDefault();
+                void handleDelete();
+              }}
+              disabled={state === "pending"}
+            >
+              {state === "pending" ? t.account.deleting : t.account.deleteConfirm}
+            </AlertDialogAction>
+          )}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   );
 }
 
-export function AccountSection({ email }: { email: string }) {
+export function AccountSection({
+  email,
+  hasPassword,
+}: {
+  email: string;
+  /**
+   * Whether this account signs in with a password. Accounts that only use
+   * Google or email links have none to change.
+   */
+  hasPassword: boolean;
+}) {
   const t = useTranslations();
 
   return (
@@ -251,7 +268,14 @@ export function AccountSection({ email }: { email: string }) {
         <CardDescription>{t.account.signedInAs(email)}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        <ChangePasswordForm email={email} />
+        {hasPassword ? (
+          <ChangePasswordForm email={email} />
+        ) : (
+          <div className="flex flex-col gap-1">
+            <p className="font-medium">{t.account.changePassword}</p>
+            <p className="text-muted-foreground text-sm">{t.account.noPassword}</p>
+          </div>
+        )}
         <div className="border-border flex flex-col gap-3 border-t pt-6">
           <div className="flex flex-col gap-1">
             <p className="font-medium">{t.account.deleteTitle}</p>
@@ -259,7 +283,7 @@ export function AccountSection({ email }: { email: string }) {
               {t.account.deleteDescription}
             </p>
           </div>
-          <DeleteAccountDialog email={email} />
+          <DeleteAccountDialog />
         </div>
       </CardContent>
     </Card>

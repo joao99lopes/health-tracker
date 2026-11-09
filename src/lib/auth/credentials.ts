@@ -9,11 +9,12 @@ import { normalizeEmail } from "./email.ts";
  */
 
 /**
- * Enforced by the register and change-password forms. Set the same minimum in
- * Firebase (Authentication -> Settings -> Password policy) so the reset page
- * Firebase hosts cannot accept shorter passwords.
+ * Enforced by the register and change-password forms. Six is Firebase's own
+ * minimum, so the reset page Firebase hosts applies the same rule without a
+ * password policy configured. Raising it here also needs the policy raised
+ * there (Authentication -> Settings -> Password policy).
  */
-export const PASSWORD_MIN_LENGTH = 12;
+export const PASSWORD_MIN_LENGTH = 6;
 
 /** Firebase's own upper bound is 4096; this keeps typos and pastes sane. */
 export const PASSWORD_MAX_LENGTH = 128;

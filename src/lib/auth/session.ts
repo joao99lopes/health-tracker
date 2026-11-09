@@ -23,6 +23,9 @@ import { SESSION_COOKIE, isSessionCurrent } from "@/lib/auth/rules";
 export type SessionUser = {
   id: string;
   email: string;
+  firebaseUid: string;
+  /** When this session's sign-in happened, in seconds since the epoch. */
+  authTime: number;
 };
 
 /**
@@ -55,7 +58,7 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   if (!user || !isSessionCurrent(authTime, user.sessionsValidAfter)) {
     return null;
   }
-  return { id: user.id, email: user.email };
+  return { id: user.id, email: user.email, firebaseUid: uid, authTime };
 });
 
 /**

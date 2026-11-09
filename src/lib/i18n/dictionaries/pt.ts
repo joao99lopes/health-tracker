@@ -129,6 +129,25 @@ export const pt: Dictionary = {
       alternatePrompt: "Já tem conta?",
       alternateLabel: "Iniciar sessão",
     },
+    alternatives: {
+      or: "ou",
+      google: "Continuar com Google",
+      emailLink: "Enviar-me uma ligação de entrada",
+    },
+    emailLink: {
+      title: "Entrar com uma ligação",
+      description: "Sem palavra-passe: enviamos-lhe por email uma ligação que inicia sessão uma vez.",
+      submit: "Enviar a ligação",
+      sent: (email: string) =>
+        `Enviada para ${email}. Abra-a neste dispositivo para entrar; funciona uma vez e expira.`,
+      completing: "A iniciar sessão…",
+      confirmTitle: "Confirme o seu email",
+      needsEmail:
+        "A ligação foi aberta noutro sítio que não aquele onde foi pedida. Introduza o endereço para onde foi enviada.",
+      confirmSubmit: "Entrar",
+      alternatePrompt: "Prefere uma palavra-passe?",
+      alternateLabel: "Iniciar sessão",
+    },
     forgot: {
       title: "Repor a palavra-passe",
       description: "Enviamos-lhe por email uma ligação para escolher uma nova palavra-passe.",
@@ -145,6 +164,12 @@ export const pt: Dictionary = {
       weakPassword: "Essa palavra-passe não é aceite. Escolha uma mais longa.",
       tooManyRequests: "Demasiadas tentativas. Aguarde alguns minutos e tente novamente.",
       network: "Não foi possível contactar o serviço de autenticação. Verifique a ligação e tente novamente.",
+      cancelled: "",
+      popupBlocked: "O navegador bloqueou a janela do Google. Permita pop-ups para este site e tente novamente.",
+      unauthorizedDomain:
+        "Este endereço ainda não pode entrar com Google nem com ligações por email. Adicione-o aos domínios autorizados do Firebase.",
+      invalidLink: "Esta ligação de entrada é inválida ou expirou. Peça uma nova.",
+      otherMethod: "Esse email já entra de outra forma. Use esse método.",
       failed: "Algo correu mal. Tente novamente.",
     },
     issues: {
@@ -172,7 +197,14 @@ export const pt: Dictionary = {
     deleteButton: "Apagar a conta…",
     deleteConfirmTitle: "Apagar a sua conta?",
     deleteConfirmDescription:
-      "Tudo o que registou é apagado e não pode ser recuperado. Introduza a sua palavra-passe para confirmar.",
+      "Tudo o que registou é apagado e não pode ser recuperado.",
+    deleteNeedsRecentSignIn:
+      "Por segurança, apagar exige uma sessão iniciada há poucos minutos. Inicie sessão de novo (de qualquer forma), volte aqui e apague.",
+    signInAgain: "Iniciar sessão de novo",
+    noPassword:
+      "Esta conta entra com Google e não tem palavra-passe. Para criar uma, use \"Esqueceu-se da palavra-passe?\" na página de entrada.",
+    emailLinkHint:
+      "Entra com ligações por email e nunca definiu palavra-passe? Use \"Esqueceu-se da palavra-passe?\" na página de entrada para criar uma.",
     deleteConfirm: "Apagar tudo",
     deleting: "A apagar…",
   },

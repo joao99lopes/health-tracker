@@ -108,3 +108,14 @@ test("a private key copied from the JSON is turned back into PEM lines", () => {
   assert.equal(normalisePrivateKey(`"${escaped}"`), pem);
   assert.equal(normalisePrivateKey(pem), pem);
 });
+
+test("Google and email-link failures map to their own messages", () => {
+  assert.equal(authErrorKey("auth/popup-closed-by-user"), "cancelled");
+  assert.equal(authErrorKey("auth/cancelled-popup-request"), "cancelled");
+  assert.equal(authErrorKey("auth/popup-blocked"), "popupBlocked");
+  assert.equal(authErrorKey("auth/unauthorized-domain"), "unauthorizedDomain");
+  assert.equal(authErrorKey("auth/unauthorized-continue-uri"), "unauthorizedDomain");
+  assert.equal(authErrorKey("auth/invalid-action-code"), "invalidLink");
+  assert.equal(authErrorKey("auth/expired-action-code"), "invalidLink");
+  assert.equal(authErrorKey("auth/account-exists-with-different-credential"), "otherMethod");
+});

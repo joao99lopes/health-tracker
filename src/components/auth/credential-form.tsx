@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { CircleCheckIcon, TriangleAlertIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -118,6 +118,7 @@ export function CredentialForm({
   newPassword,
   onSubmit,
   passwordHelp,
+  alternatives,
   alternate,
 }: {
   title: string;
@@ -130,6 +131,8 @@ export function CredentialForm({
   onSubmit: CredentialSubmit;
   /** Shown under the password field, such as a "forgot password" link. */
   passwordHelp?: { href: string; label: string };
+  /** Other ways in (Google, email link), under the form. */
+  alternatives?: ReactNode;
   alternate: { prompt: string; href: string; label: string };
 }) {
   const router = useRouter();
@@ -281,6 +284,8 @@ export function CredentialForm({
             {pending ? t.common.saving : submitLabel}
           </Button>
         </form>
+
+        {alternatives !== undefined && <div className="mt-5">{alternatives}</div>}
 
         <p className="text-muted-foreground mt-6 text-center text-sm">
           {alternate.prompt}{" "}

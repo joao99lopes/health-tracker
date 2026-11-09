@@ -3,13 +3,19 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { getApp, getApps, initializeApp } from "@firebase/app";
 import {
+  GoogleAuthProvider,
+  browserPopupRedirectResolver,
   connectAuthEmulator,
   createUserWithEmailAndPassword,
   inMemoryPersistence,
   initializeAuth,
+  isSignInWithEmailLink,
   sendEmailVerification,
   sendPasswordResetEmail,
+  sendSignInLinkToEmail,
   signInWithEmailAndPassword,
+  signInWithEmailLink,
+  signInWithPopup,
   signOut,
   updatePassword,
   type Auth,
@@ -27,8 +33,9 @@ import { authErrorKey, type AuthErrorKey } from "@/lib/auth/rules";
 /**
  * Firebase Auth in the browser.
  *
- * The browser talks to Firebase only to prove the password (and to ask
- * Firebase to send its emails). It never keeps a Firebase session of its own
+ * The browser talks to Firebase only to prove who someone is - a password,
+ * a Google account or a one-time email link - and to ask Firebase to send its
+ * emails. It never keeps a Firebase session of its own
  * - persistence is in memory and every flow signs out of Firebase when done -
  * because the app's session is the httpOnly cookie the server mints from the
  * ID token. One session, one place to end it.
@@ -68,7 +75,12 @@ function authFor(config: FirebaseWebConfig): Auth {
         { apiKey: config.apiKey, authDomain: config.authDomain, projectId: config.projectId },
         APP_NAME,
       );
-  const auth = initializeAuth(app, { persistence: inMemoryPersistence });
+  // The popup resolver is what lets Google sign-in open its window; it is
+  // opt-in with initializeAuth.
+  const auth = initializeAuth(app, {
+    persistence: inMemoryPersistence,
+    popupRedirectResolver: browserPopupRedirectResolver,
+  });
   if (config.emulatorHost) {
     connectAuthEmulator(auth, `http://${config.emulatorHost}`, { disableWarnings: true });
   }
@@ -82,6 +94,10 @@ export type AuthOutcome =
   | { status: "unverified"; resend: () => Promise<AuthOutcome> }
   | { status: "verification-sent" }
   | { status: "reset-sent" }
+  | { status: "link-sent" }
+  // Opened on another device or browser: the address is needed again.
+  | { status: "needs-email" }
+  | { status: "stale" }
   | { status: "email-taken" }
   | { status: "error"; key: AuthErrorKey };
 
@@ -100,6 +116,7 @@ function fromSession(result: SessionResult): AuthOutcome {
     case "email-taken":
       return { status: "email-taken" };
     case "stale":
+      return { status: "stale" };
     case "unverified":
     case "error":
       return { status: "error", key: "failed" };
@@ -111,8 +128,57 @@ export type BrowserAuth = {
   register: (email: string, password: string) => Promise<AuthOutcome>;
   requestPasswordReset: (email: string) => Promise<AuthOutcome>;
   changePassword: (email: string, current: string, next: string) => Promise<AuthOutcome>;
-  deleteAccount: (email: string, password: string) => Promise<AuthOutcome>;
+  signInWithGoogle: () => Promise<AuthOutcome>;
+  sendSignInLink: (email: string) => Promise<AuthOutcome>;
+  /** Finishes an email-link sign-in from the current URL. */
+  completeSignInLink: (email: string | null) => Promise<AuthOutcome>;
+  isSignInLink: () => boolean;
+  deleteAccount: () => Promise<AuthOutcome>;
 };
+
+/** Where the email link sends people back to; must be an authorized domain. */
+export const EMAIL_LINK_PATH = "/login/email-link";
+
+/**
+ * The address an email link was sent to, kept in this browser so opening the
+ * link here needs no retyping. Storage may be unavailable (private mode):
+ * then the page simply asks for the address again.
+ */
+const EMAIL_FOR_LINK = "health-tracker:email-for-sign-in";
+
+function rememberEmail(email: string | null): void {
+  try {
+    if (email === null) {
+      window.localStorage.removeItem(EMAIL_FOR_LINK);
+    } else {
+      window.localStorage.setItem(EMAIL_FOR_LINK, email);
+    }
+  } catch {
+    // Not stored: the link page will ask.
+  }
+}
+
+function rememberedEmail(): string | null {
+  try {
+    return window.localStorage.getItem(EMAIL_FOR_LINK);
+  } catch {
+    return null;
+  }
+}
+
+/** Runs `flow`, always leaving the browser signed out of Firebase. */
+async function signedOutAfter(
+  auth: Auth,
+  flow: () => Promise<AuthOutcome>,
+): Promise<AuthOutcome> {
+  try {
+    return await flow();
+  } catch (error) {
+    return errorOutcome(error);
+  } finally {
+    await signOut(auth).catch(() => undefined);
+  }
+}
 
 /** Signs in with the password, runs `then` with the fresh user, signs out. */
 async function withFreshSignIn(
@@ -198,10 +264,49 @@ export function useBrowserAuth(): BrowserAuth {
         );
       },
 
-      deleteAccount: (email, password) =>
-        withFreshSignIn(auth(), email, password, async (user) =>
-          fromSession(await deleteAccountAction(await user.getIdToken())),
-        ),
+      signInWithGoogle: () =>
+        signedOutAfter(auth(), async () => {
+          const provider = new GoogleAuthProvider();
+          // Always offer the account chooser, so a shared computer does not
+          // silently reuse whoever signed in to Google last.
+          provider.setCustomParameters({ prompt: "select_account" });
+          const { user } = await signInWithPopup(auth(), provider);
+          // Google vouches for the address: no verification email needed.
+          return fromSession(await createSessionAction(await user.getIdToken()));
+        }),
+
+      sendSignInLink: async (email) => {
+        try {
+          await sendSignInLinkToEmail(auth(), email, {
+            // The host the person is using now, so the link comes back here.
+            url: `${window.location.origin}${EMAIL_LINK_PATH}`,
+            handleCodeInApp: true,
+          });
+          rememberEmail(email);
+          return { status: "link-sent" };
+        } catch (error) {
+          return errorOutcome(error);
+        }
+      },
+
+      isSignInLink: () => isSignInWithEmailLink(auth(), window.location.href),
+
+      completeSignInLink: (typedEmail) =>
+        signedOutAfter(auth(), async () => {
+          const href = window.location.href;
+          if (!isSignInWithEmailLink(auth(), href)) {
+            return { status: "error", key: "invalidLink" };
+          }
+          const email = typedEmail ?? rememberedEmail();
+          if (email === null) {
+            return { status: "needs-email" };
+          }
+          const { user } = await signInWithEmailLink(auth(), email, href);
+          rememberEmail(null);
+          return fromSession(await createSessionAction(await user.getIdToken()));
+        }),
+
+      deleteAccount: async () => fromSession(await deleteAccountAction()),
     } satisfies BrowserAuth;
   }, [config]);
 }

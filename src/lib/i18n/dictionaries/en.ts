@@ -128,6 +128,25 @@ export const en = {
       alternatePrompt: "Already registered?",
       alternateLabel: "Sign in",
     },
+    alternatives: {
+      or: "or",
+      google: "Continue with Google",
+      emailLink: "Email me a sign-in link",
+    },
+    emailLink: {
+      title: "Sign in with a link",
+      description: "No password: we email you a link that signs you in once.",
+      submit: "Send the link",
+      sent: (email: string) =>
+        `Sent to ${email}. Open it on this device to sign in; it works once and expires.`,
+      completing: "Signing you in…",
+      confirmTitle: "Confirm your email",
+      needsEmail:
+        "The link was opened somewhere other than where it was requested. Enter the address it was sent to.",
+      confirmSubmit: "Sign in",
+      alternatePrompt: "Prefer a password?",
+      alternateLabel: "Sign in",
+    },
     forgot: {
       title: "Reset your password",
       description: "We will email you a link to choose a new password.",
@@ -146,6 +165,12 @@ export const en = {
       weakPassword: "That password is not accepted. Choose a longer one.",
       tooManyRequests: "Too many attempts. Wait a few minutes and try again.",
       network: "Could not reach the sign-in service. Check the connection and try again.",
+      cancelled: "",
+      popupBlocked: "The browser blocked the Google window. Allow pop-ups for this site and try again.",
+      unauthorizedDomain:
+        "This address is not allowed to sign in with Google or email links yet. Add it to the Firebase authorized domains.",
+      invalidLink: "This sign-in link is invalid or has expired. Ask for a new one.",
+      otherMethod: "That email already signs in another way. Use that method instead.",
       failed: "Something went wrong. Please try again.",
     },
     issues: {
@@ -173,7 +198,14 @@ export const en = {
     deleteButton: "Delete account…",
     deleteConfirmTitle: "Delete your account?",
     deleteConfirmDescription:
-      "Everything you recorded is deleted and cannot be recovered. Enter your password to confirm.",
+      "Everything you recorded is deleted and cannot be recovered.",
+    deleteNeedsRecentSignIn:
+      "For safety, deleting needs a sign-in from the last few minutes. Sign in again (any way you like), come back here and delete.",
+    signInAgain: "Sign in again",
+    noPassword:
+      "This account signs in with Google and has no password. To add one, use \"Forgot your password?\" on the sign-in page.",
+    emailLinkHint:
+      "Sign in with email links and never set a password? Use \"Forgot your password?\" on the sign-in page to create one.",
     deleteConfirm: "Delete everything",
     deleting: "Deleting…",
   },

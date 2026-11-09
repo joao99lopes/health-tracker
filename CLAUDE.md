@@ -298,9 +298,22 @@ a `.dark` class, but nothing sets it. That belongs with the UI phase.
 ### Authentication
 
 **Firebase Auth** (`@firebase/auth` 1.13.8 in the browser, `firebase-admin`
-14.5.0 on the server), email and password only. Email verification is
-**required** before a session exists; password reset, change and account
-deletion are supported. No social login.
+14.5.0 on the server). Three ways in: **email and password** (verification
+required before a session exists), **Google** (popup) and a one-time **email
+link** (`/login/email-link`). Password reset, change and account deletion are
+supported. Google and email links only work from hosts listed in Firebase's
+*Authorized domains* - on the Pi, its LAN address.
+
+- **Deleting an account** needs a session signed in within the last five
+  minutes, by any method; an older one is asked to sign in again. Changing the
+  password asks for the current one. Firebase reports password and
+  email-link accounts alike as the `password` provider, so the change form is
+  shown to both (with a hint for link users); Google-only accounts get a note
+  instead (`src/lib/auth/providers.ts`).
+- The CSP allows Google's script loader (`apis.google.com`) and the auth
+  domain's iframe (`*.firebaseapp.com`, `*.web.app` - the project's own domain
+  is runtime config, the headers are build-time), and the opener policy is
+  `same-origin-allow-popups` so the Google window can report back.
 
 How it fits together:
 
@@ -327,8 +340,8 @@ How it fits together:
   nothing more. It is not access control, and it never redirects *away* from
   an auth page (see `src/lib/auth/routing.ts`).
 - `src/lib/auth/credentials.ts` — email and password rules for the forms. Keep
-  `PASSWORD_MIN_LENGTH` equal to the password policy set in the Firebase
-  console, or the reset page Firebase hosts will accept shorter passwords.
+  `PASSWORD_MIN_LENGTH` (6, Firebase's own minimum) in step with any password
+  policy set in the Firebase console.
 
 **Users table.** `User` holds no credentials: `email` (normalised, unique),
 `firebaseUid` (unique, null for a pre-Firebase account that has not signed in
@@ -352,4 +365,6 @@ Two differences from production to remember when testing:
   resolves it to 127.0.0.1) and `--add-host` it to the emulator's address.
 
 Emails Firebase "sends" from the emulator are listed at
-`http://<emulator>/emulator/v1/projects/<project>/oobCodes`.
+`http://<emulator>/emulator/v1/projects/<project>/oobCodes`. Google sign-in
+against the emulator shows a fake account chooser in the popup; it needs a
+browser that opens real popup windows.

@@ -122,6 +122,11 @@ export type AuthErrorKey =
   | "weakPassword"
   | "tooManyRequests"
   | "network"
+  | "cancelled"
+  | "popupBlocked"
+  | "unauthorizedDomain"
+  | "invalidLink"
+  | "otherMethod"
   | "failed";
 
 export function authErrorKey(code: string | undefined): AuthErrorKey {
@@ -141,6 +146,23 @@ export function authErrorKey(code: string | undefined): AuthErrorKey {
       return "tooManyRequests";
     case "auth/network-request-failed":
       return "network";
+    // The person closed the Google window: not an error worth a message.
+    case "auth/popup-closed-by-user":
+    case "auth/cancelled-popup-request":
+    case "auth/user-cancelled":
+      return "cancelled";
+    case "auth/popup-blocked":
+      return "popupBlocked";
+    // This host is not in Firebase's Authorized domains (see DEPLOYMENT.md).
+    case "auth/unauthorized-domain":
+    case "auth/unauthorized-continue-uri":
+      return "unauthorizedDomain";
+    case "auth/invalid-action-code":
+    case "auth/expired-action-code":
+      return "invalidLink";
+    // The address already signs in another way (e.g. with Google).
+    case "auth/account-exists-with-different-credential":
+      return "otherMethod";
     default:
       return "failed";
   }

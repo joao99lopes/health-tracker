@@ -149,27 +149,28 @@ into `.next/types/`, so a standalone `tsc` on a clean tree reports them missing.
 
 ## Firebase project
 
-Sign-in runs on Firebase Auth (free for email and password). One project
-serves every environment that points at it; create it once.
+Sign-in runs on Firebase Auth (free for these methods). One project serves
+every environment that points at it; create it once.
 
 1. **Create the project** at <https://console.firebase.google.com> (Analytics
-   is not needed).
-2. **Authentication → Sign-in method:** enable **Email/Password** (not the
-   passwordless email link).
-3. **Authentication → Settings → Password policy:** require a minimum length
-   of **12**, matching `PASSWORD_MIN_LENGTH` in `src/lib/auth/credentials.ts`.
-   Without it, the reset page Firebase hosts accepts shorter passwords.
-4. **Authentication → Templates** (optional): the sender name and language of
-   the verification and reset emails.
-5. **Project settings → General → Your apps:** add a **Web** app. Its config
+   is not needed), then **Authentication → Get started**.
+2. **Authentication → Sign-in method:** enable **Email/Password** with
+   **Email link (passwordless sign-in)**, and **Google**.
+3. **Authentication → Settings → Authorized domains:** add every host the app
+   is opened from, exactly as typed in the browser — on the Pi its LAN address
+   (e.g. `192.168.1.170`). Google sign-in and email links are refused from any
+   other host; `localhost` is there by default.
+4. **Password policy:** leave it unset. Firebase's own minimum is 6, the same
+   as `PASSWORD_MIN_LENGTH` in `src/lib/auth/credentials.ts`; raise both
+   together if ever.
+5. **Authentication → Templates** (optional): the sender name and language of
+   the verification, sign-in link and reset emails.
+6. **Project settings → General → Your apps:** add a **Web** app. Its config
    gives `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN` and `FIREBASE_PROJECT_ID`.
-6. **Project settings → Service accounts → Generate new private key:** from
+7. **Project settings → Service accounts → Generate new private key:** from
    the downloaded JSON copy `client_email` to `FIREBASE_CLIENT_EMAIL` and
    `private_key` to `FIREBASE_PRIVATE_KEY`, then delete the file. Anyone with
    these two can manage every account.
-
-Nothing needs adding to *Authorized domains*: email and password sign-in does
-not redirect, and the emails send people to pages Firebase hosts.
 
 ---
 
@@ -389,6 +390,15 @@ does not match the web config, or `FIREBASE_PRIVATE_KEY` lost its quotes or its
 **"Could not reach the sign-in service".**
 The Pi, or the browser, has no internet access. Firebase Auth needs it for
 signing in; an existing session keeps working without it.
+
+**"This address is not allowed to sign in with Google or email links yet".**
+The host in the browser's address bar is not in Firebase → Authentication →
+Settings → *Authorized domains*. Add it exactly as typed (e.g.
+`192.168.1.170`); password sign-in works regardless.
+
+**"The browser blocked the Google window".**
+Allow pop-ups for the app's address. Google sign-in opens a small window and
+needs it to report back.
 
 **"Confirm your email address first".**
 By design: no session until the address is verified. The message offers to

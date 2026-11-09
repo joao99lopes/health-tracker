@@ -78,7 +78,22 @@ test("the Auth emulator is reachable only when configured", () => {
   );
   assert.ok(withEmulator);
   assert.ok(directive(withEmulator.value, "connect-src").includes("http://localhost:9099"));
+  assert.ok(directive(withEmulator.value, "frame-src").includes("http://localhost:9099"));
   assert.ok(
     !directive(header("Content-Security-Policy"), "connect-src").some((s) => s.startsWith("http://")),
   );
+});
+
+test("Google sign-in may load its script and the auth-domain iframe, nothing more", () => {
+  const csp = header("Content-Security-Policy");
+  assert.ok(directive(csp, "script-src").includes("https://apis.google.com"));
+  assert.deepEqual(directive(csp, "frame-src"), [
+    "'self'",
+    "https://*.firebaseapp.com",
+    "https://*.web.app",
+  ]);
+});
+
+test("the opener policy lets the Google popup report back", () => {
+  assert.equal(header("Cross-Origin-Opener-Policy"), "same-origin-allow-popups");
 });

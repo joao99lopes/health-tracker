@@ -18,6 +18,7 @@ export const AUTH_PAGES: readonly string[] = [
   "/login",
   "/register",
   "/forgot-password",
+  "/login/email-link",
 ];
 
 export function isAuthPage(pathname: string): boolean {

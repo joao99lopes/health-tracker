@@ -31,6 +31,19 @@ export const FIREBASE_AUTH_ORIGINS = [
   "https://securetoken.googleapis.com",
 ] as const;
 
+/**
+ * Google sign-in: the SDK loads Google's script loader from apis.google.com
+ * and talks to the popup through a hidden iframe served by the project's auth
+ * domain. That domain is configuration read at run time, while these headers
+ * are fixed at build time - hence the two hostnames Firebase serves auth
+ * domains from, rather than one project's.
+ */
+export const GOOGLE_SIGN_IN_SCRIPTS = ["https://apis.google.com"] as const;
+export const FIREBASE_AUTH_FRAMES = [
+  "https://*.firebaseapp.com",
+  "https://*.web.app",
+] as const;
+
 type CspOptions = {
   /** The Firebase Auth emulator (`host:port`), development only. */
   authEmulatorHost?: string | null;
@@ -43,6 +56,7 @@ function contentSecurityPolicy(isDevelopment: boolean, options: CspOptions): str
     "script-src": [
       "'self'",
       "'unsafe-inline'",
+      ...GOOGLE_SIGN_IN_SCRIPTS,
       ...(isDevelopment ? ["'unsafe-eval'"] : []),
     ],
     "style-src": ["'self'", "'unsafe-inline'"],
@@ -61,6 +75,12 @@ function contentSecurityPolicy(isDevelopment: boolean, options: CspOptions): str
     "base-uri": ["'self'"],
     "form-action": ["'self'"],
     "frame-ancestors": ["'none'"],
+    "frame-src": [
+      "'self'",
+      ...FIREBASE_AUTH_FRAMES,
+      // The emulator serves the same iframe from its own host.
+      ...(options.authEmulatorHost ? [`http://${options.authEmulatorHost}`] : []),
+    ],
   };
   return Object.entries(directives)
     .map(([name, sources]) => `${name} ${sources.join(" ")}`)
@@ -85,6 +105,8 @@ export function securityHeaders(
       key: "Permissions-Policy",
       value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
     },
-    { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+    // Not plain "same-origin": the Google sign-in popup must be able to report
+    // back to the window that opened it.
+    { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
   ];
 }

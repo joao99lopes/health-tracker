@@ -4,6 +4,7 @@ import { ProfileForm } from "@/components/profile/profile-form";
 import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth/session";
 import { getTranslations } from "@/lib/i18n/server";
+import { hasEmailProvider } from "@/lib/auth/providers";
 import { getProfile } from "@/lib/profile/queries";
 import { displayVersion } from "@/lib/version";
 import { env } from "@/env";
@@ -11,9 +12,10 @@ import { env } from "@/env";
 export default async function ProfilePage() {
   // Authoritative check, and the only id the query below is scoped by.
   const user = await requireUser();
-  const [profile, { t, language }] = await Promise.all([
+  const [profile, { t, language }, hasPassword] = await Promise.all([
     getProfile(user.id),
     getTranslations(),
+    hasEmailProvider(user.firebaseUid),
   ]);
 
   return (
@@ -24,7 +26,7 @@ export default async function ProfilePage() {
 
       <DataSection profileHeightCm={profile?.heightCm ?? null} />
 
-      <AccountSection email={user.email} />
+      <AccountSection email={user.email} hasPassword={hasPassword} />
 
       {/* Which build is running - useful after a deploy or a rollback. */}
       <p className="text-muted-foreground text-center text-xs">

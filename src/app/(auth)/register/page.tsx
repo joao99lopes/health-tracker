@@ -1,5 +1,6 @@
 "use client";
 
+import { AlternativeSignIn } from "@/components/auth/alternative-sign-in";
 import { CredentialForm } from "@/components/auth/credential-form";
 import { toCredentialOutcome } from "@/components/auth/outcome";
 import { useBrowserAuth } from "@/lib/firebase/client";
@@ -28,6 +29,7 @@ export default function RegisterPage() {
           t.auth.register.verificationSent(email),
         )
       }
+      alternatives={<AlternativeSignIn />}
       alternate={{
         prompt: t.auth.register.alternatePrompt,
         href: "/login",

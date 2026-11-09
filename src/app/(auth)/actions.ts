@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { env } from "@/env";
 import { prisma } from "@/lib/db";
 import { adminAuth } from "@/lib/firebase/admin";
+import { getSessionUser } from "@/lib/auth/session";
 import { normalizeEmail } from "@/lib/auth/email";
 import {
   SESSION_COOKIE,
@@ -176,21 +177,30 @@ export async function passwordChangedAction(idToken: string): Promise<SessionRes
 }
 
 /**
- * Deletes an account: every measurement and the profile (by cascade), then
- * the Firebase account, then this browser's session.
+ * Deletes the signed-in account: every measurement and the profile (by
+ * cascade), then the Firebase account, then this browser's session.
  *
- * Like the password change, it acts on the account the fresh token proves -
- * the password was typed seconds ago in the confirmation dialog.
+ * Only from a session signed in within the last few minutes, whichever way
+ * (password, Google or email link) - so an unlocked phone left signed in for
+ * days cannot erase everything. An older session gets "stale", and the
+ * interface asks for a fresh sign-in first.
  */
-export async function deleteAccountAction(idToken: string): Promise<SessionResult> {
-  const token = await verifyFreshToken(idToken);
-  if (token === null) return { status: "error" };
-  if (token === "stale") return { status: "stale" };
+export async function deleteAccountAction(): Promise<SessionResult> {
+  const user = await getSessionUser();
+  if (!user) {
+    logFailure("deleteAccount", "no current session");
+    return { status: "error" };
+  }
+  if (!isRecentSignIn(user.authTime, new Date())) {
+    return { status: "stale" };
+  }
 
   try {
-    const deleted = await prisma.user.deleteMany({ where: { firebaseUid: token.uid } });
+    const deleted = await prisma.user.deleteMany({
+      where: { id: user.id, firebaseUid: user.firebaseUid },
+    });
     if (deleted.count === 0) {
-      logFailure("deleteAccount", "no user for this Firebase account");
+      logFailure("deleteAccount", "no user row for this session");
       return { status: "error" };
     }
   } catch (error) {
@@ -200,7 +210,7 @@ export async function deleteAccountAction(idToken: string): Promise<SessionResul
   // The data is gone at this point; a Firebase failure only leaves an empty
   // login behind, which signing in again would reuse.
   try {
-    await adminAuth().deleteUser(token.uid);
+    await adminAuth().deleteUser(user.firebaseUid);
   } catch (error) {
     // Logged, not reported to the user: they asked for their data to go,
     // and it has.
