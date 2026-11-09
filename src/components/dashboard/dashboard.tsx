@@ -58,11 +58,11 @@ import {
  * suggests. A value carried over from an older measurement says which day it
  * came from, so nothing on the page claims to be more recent than it is.
  *
- * Each card carries its own change against the previous measurement, where
- * both measurements recorded that metric. Where they did not, the card shows
- * the value alone: a difference against something that was never measured
- * would be an invention. Comparison availability is therefore per metric, not
- * per card set.
+ * Each card carries its own change against that metric's previous reading,
+ * wherever it was recorded. A metric recorded only once shows the value alone:
+ * a difference against something that was never measured would be an
+ * invention. Comparison availability is therefore per metric, not per card
+ * set.
  *
  * Where the reader has said which way they would like a metric to move, that
  * change is tinted as with or against what they asked for. It is a
@@ -95,10 +95,10 @@ const DIRECTION_ICONS = {
 } as const;
 
 /**
- * The change against the previous measurement, per metric.
+ * Each metric's change against its own previous reading.
  *
- * Only the metrics both measurements recorded are in the map, so a card that
- * finds nothing here simply has nothing to compare with.
+ * Only metrics recorded at least twice are in the map, so a card that finds
+ * nothing here simply has nothing to compare with.
  */
 function previousChanges(
   measurements: readonly Measurement[],

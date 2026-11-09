@@ -64,7 +64,7 @@ export const en = {
     fromEarlier: (when: string) => `From ${when}`,
     vsFirst: "Latest vs first",
     vsPeriod: "Over a period",
-    comparedWith: (when: string) => `Compared with ${when}`,
+    perMetricHint: "Each metric between its own readings.",
     notEnoughData: "Not enough data yet.",
     viewAll: "All measurements",
   },

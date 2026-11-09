@@ -64,7 +64,7 @@ export const pt: Dictionary = {
     fromEarlier: (when: string) => `De ${when}`,
     vsFirst: "Última vs primeira",
     vsPeriod: "Ao longo de um período",
-    comparedWith: (when: string) => `Comparada com ${when}`,
+    perMetricHint: "Cada métrica entre os seus próprios registos.",
     notEnoughData: "Ainda não há dados suficientes.",
     viewAll: "Todas as medições",
   },

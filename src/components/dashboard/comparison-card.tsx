@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { useI18n } from "@/lib/i18n/context";
 import { useHydrated } from "@/hooks/use-hydrated";
-import type { MeasurementComparison } from "@/lib/measurements/comparison";
+import type { MetricComparisons } from "@/lib/measurements/comparison";
 import {
   formatDate,
   formatMetricDelta,
@@ -28,11 +28,13 @@ import { TONE_TEXT_CLASS } from "@/components/tone";
 import { cn } from "@/lib/utils";
 
 /**
- * One comparison between two measurements, metric by metric.
+ * One comparison, metric by metric.
  *
- * Only metrics present on both sides appear - a difference against a value
- * that was never recorded is not a difference. When there is no second
- * measurement to compare with, the card says so instead of drawing zeroes.
+ * Each metric is compared between its own two readings, which need not come
+ * from the same measurements, so every row carries its own two dates. A
+ * metric with fewer than two readings has no row - a difference against a
+ * value that was never recorded is not a difference - and when no metric has
+ * two, the card says so instead of drawing zeroes.
  *
  * The arrow states which way the number moved, and the number says how far.
  * Where the reader has said which way they would like a metric to go, the two
@@ -54,7 +56,7 @@ export function ComparisonCard({
   action,
 }: {
   title: string;
-  comparison: MeasurementComparison | null;
+  comparison: MetricComparisons | null;
   /** The reader's direction preference per metric; presentation only. */
   directions: DirectionPreferences;
   /** Optional control in the header, such as the period picker. */
@@ -81,19 +83,14 @@ export function ComparisonCard({
     );
   }
 
-  const earlierDate = formatDate(
-    comparison.earlier.measuredAt,
-    language,
-    hydrated ? undefined : "UTC",
-  );
+  const date = (value: Date) =>
+    formatDate(value, language, hydrated ? undefined : "UTC");
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
-        <CardDescription>
-          {t.dashboard.comparedWith(earlierDate)}
-        </CardDescription>
+        <CardDescription>{t.dashboard.perMetricHint}</CardDescription>
         {action !== undefined && <CardAction>{action}</CardAction>}
       </CardHeader>
       <CardContent>
@@ -117,6 +114,13 @@ export function ComparisonCard({
                     {formatMetricValue(metric.metric, metric.from, language)}
                     {" → "}
                     {formatMetricValue(metric.metric, metric.to, language)}
+                  </span>
+                  {/* Each metric is compared between its own readings, so
+                      each row says which days those were. */}
+                  <span className="text-muted-foreground/80 text-xs">
+                    {date(metric.fromAt)}
+                    {" → "}
+                    {date(metric.toAt)}
                   </span>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
