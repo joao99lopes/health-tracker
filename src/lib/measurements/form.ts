@@ -54,10 +54,12 @@ export function formValuesFrom(
 export function toMeasurementInput(
   measuredAt: string,
   values: MeasurementFormValues,
+  note = "",
 ): MeasurementInput {
   const date = fromLocalInputValue(measuredAt);
   return {
     measuredAt: date === null ? measuredAt.trim() : toIsoInstant(date),
+    note,
     ...values,
   };
 }

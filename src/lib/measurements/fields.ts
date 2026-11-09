@@ -62,6 +62,12 @@ export const MEASUREMENT_FIELD_SPECS: Record<
 };
 
 /**
+ * Longest note a measurement can carry, in characters. Matches the
+ * `VarChar(500)` column of `Measurement.note`.
+ */
+export const NOTE_MAX_LENGTH = 500;
+
+/**
  * Nothing was measured before this. A date below it is a typo, not history.
  */
 export const EARLIEST_MEASURED_AT = "1900-01-01T00:00:00.000Z";

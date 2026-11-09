@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { useI18n } from "@/lib/i18n/context";
 import type { Dictionary } from "@/lib/i18n/dictionary";
@@ -20,6 +21,7 @@ import { toLocalInputValue } from "@/lib/measurements/datetime";
 import {
   MEASUREMENT_FIELD_SPECS,
   MEASUREMENT_VALUE_FIELDS,
+  NOTE_MAX_LENGTH,
   type MeasurementValueField,
 } from "@/lib/measurements/fields";
 import { formatHeightCm } from "@/lib/measurements/format";
@@ -92,6 +94,7 @@ export function MeasurementForm({
   const [values, setValues] = useState<MeasurementFormValues>(() =>
     measurement ? formValuesFrom(measurement) : emptyFormValues(),
   );
+  const [note, setNote] = useState(measurement?.note ?? "");
 
   // A datetime-local input has no time zone, so its value can only be right
   // once the browser is running it. Until then it stays empty rather than
@@ -122,7 +125,7 @@ export function MeasurementForm({
     event.preventDefault();
     setStatus("idle");
 
-    const input = toMeasurementInput(measuredAt, values);
+    const input = toMeasurementInput(measuredAt, values, note);
     const parsed = parseMeasurementInput(input);
     setIssues(parsed.issues);
     if (!parsed.measurement) {
@@ -262,6 +265,30 @@ export function MeasurementForm({
             </div>
           </fieldset>
 
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="note">
+              {t.measurements.note}{" "}
+              <span className="text-muted-foreground font-normal">
+                ({t.common.optional})
+              </span>
+            </Label>
+            <Textarea
+              id="note"
+              name="note"
+              rows={2}
+              // The validator enforces the same limit; this only stops typing.
+              maxLength={NOTE_MAX_LENGTH}
+              aria-invalid={invalid("note") || undefined}
+              aria-describedby={invalid("note") ? "note-issues note-hint" : "note-hint"}
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+            />
+            <p id="note-hint" className="text-muted-foreground text-xs">
+              {t.measurements.noteHint(NOTE_MAX_LENGTH)}
+            </p>
+            <FieldIssues field="note" issues={issues} t={t} />
+          </div>
+
           <div className="bg-muted/50 text-muted-foreground flex flex-col gap-1 rounded-xl p-4 text-sm">
             <p className="text-foreground font-medium">
               {t.measurements.heightAtMeasurement}:{" "}
@@ -300,7 +327,8 @@ export function MeasurementForm({
             <Button
               type="submit"
               size="lg"
-              disabled={pending}
+              // A submission before hydration would be a native GET.
+              disabled={pending || !hydrated}
               className="max-sm:w-full"
             >
               {pending ? t.common.saving : t.common.save}

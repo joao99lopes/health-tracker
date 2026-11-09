@@ -194,6 +194,9 @@ export const pt: Dictionary = {
       "Cada medição é registada com a sua altura, para que o IMC se mantenha correto quando a altura mudar. Complete o perfil para começar a registar.",
     goToProfile: "Ir para o perfil",
     values: "Valores",
+    note: "Nota",
+    noteHint: (max: number) =>
+      `Algo que valha a pena lembrar sobre esta leitura. Até ${max} caracteres.`,
     bmi: "IMC",
     waistToHeightRatio: "Relação cintura-altura",
     derivedHint:
@@ -242,6 +245,7 @@ export const pt: Dictionary = {
       VALUE_INVALID: "Introduza este valor como número.",
       VALUE_OUT_OF_RANGE: (min: number, max: number) =>
         `Introduza um valor entre ${min} e ${max}.`,
+      NOTE_TOO_LONG: "Essa nota é demasiado longa.",
       NO_VALUES: "Introduza pelo menos um valor de medição.",
     },
   },

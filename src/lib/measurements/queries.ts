@@ -27,6 +27,7 @@ export type Measurement = {
   id: string;
   measuredAt: Date;
   heightCmAtMeasurement: number;
+  note: string | null;
 } & Record<MeasurementValueField, number | null>;
 
 type MeasurementRow = Prisma.MeasurementGetPayload<object>;
@@ -47,6 +48,7 @@ function toMeasurement(row: MeasurementRow): Measurement {
     boneMassKg: toNumber(row.boneMassKg),
     visceralFat: row.visceralFat,
     abdominalCircumferenceCm: toNumber(row.abdominalCircumferenceCm),
+    note: row.note,
   };
 }
 
@@ -112,6 +114,7 @@ export async function createMeasurement(
       userId,
       measuredAt: measurement.measuredAt,
       heightCmAtMeasurement,
+      note: measurement.note,
       ...valueData(measurement.values),
     },
     select: { id: true },
@@ -141,6 +144,7 @@ export async function updateMeasurement(
     where: { id, userId },
     data: {
       measuredAt: measurement.measuredAt,
+      note: measurement.note,
       ...valueData(measurement.values),
     },
   });

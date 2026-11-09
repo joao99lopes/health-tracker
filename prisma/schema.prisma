@@ -190,6 +190,11 @@ model Measurement {
   /// profile height changes.
   heightCmAtMeasurement Decimal @db.Decimal(5, 1)
 
+  /// Free text the user attaches to the reading ("after dinner"). Not a
+  /// measurement value: it never satisfies the at-least-one-value rule.
+  /// Length limit: NOTE_MAX_LENGTH in src/lib/measurements/fields.ts.
+  note String? @db.VarChar(500)
+
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 

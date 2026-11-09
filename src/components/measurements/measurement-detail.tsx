@@ -173,6 +173,18 @@ export function MeasurementDetail({
               );
             })}
           </dl>
+
+          {measurement.note !== null && (
+            <div className="border-border flex flex-col gap-1 border-t pt-5">
+              <p className="text-muted-foreground text-sm">
+                {t.measurements.note}
+              </p>
+              {/* Line breaks the user typed are kept. */}
+              <p className="text-sm leading-relaxed whitespace-pre-line">
+                {measurement.note}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

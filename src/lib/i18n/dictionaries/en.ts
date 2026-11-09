@@ -195,6 +195,9 @@ export const en = {
       "A measurement is recorded together with your height, so BMI stays correct as your height changes. Complete your profile to start recording.",
     goToProfile: "Go to profile",
     values: "Values",
+    note: "Note",
+    noteHint: (max: number) =>
+      `Anything worth remembering about this reading. Up to ${max} characters.`,
     bmi: "BMI",
     waistToHeightRatio: "Waist-to-height ratio",
     derivedHint:
@@ -243,6 +246,7 @@ export const en = {
       VALUE_INVALID: "Enter this value as a number.",
       VALUE_OUT_OF_RANGE: (min: number, max: number) =>
         `Enter a value between ${min} and ${max}.`,
+      NOTE_TOO_LONG: "That note is too long.",
       NO_VALUES: "Enter at least one measurement value.",
     },
   },

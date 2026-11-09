@@ -1,5 +1,6 @@
 import {
   EARLIEST_MEASURED_AT,
+  NOTE_MAX_LENGTH,
   MEASUREMENT_FIELD_SPECS,
   MEASUREMENT_VALUE_FIELDS,
   type MeasurementValueField,
@@ -73,6 +74,8 @@ export function assertAtLeastOneValue(values: MeasurementValues): void {
  */
 export type MeasurementInput = {
   measuredAt: string;
+  /** Free text; absent or blank means no note. */
+  note?: string;
 } & { [K in MeasurementValueField]: string };
 
 /** A measurement parsed and ready for the database. */
@@ -80,6 +83,8 @@ export type ParsedMeasurement = {
   measuredAt: Date;
   /** Present for every field; null where the user left the input empty. */
   values: Record<MeasurementValueField, number | null>;
+  /** Trimmed; null when blank. */
+  note: string | null;
 };
 
 export type MeasurementIssueCode =
@@ -89,6 +94,7 @@ export type MeasurementIssueCode =
   | "MEASURED_AT_TOO_OLD"
   | "VALUE_INVALID"
   | "VALUE_OUT_OF_RANGE"
+  | "NOTE_TOO_LONG"
   | "NO_VALUES";
 
 /**
@@ -98,7 +104,7 @@ export type MeasurementIssueCode =
  * combination is.
  */
 export type MeasurementIssue = {
-  field: MeasurementValueField | "measuredAt" | "form";
+  field: MeasurementValueField | "measuredAt" | "note" | "form";
   code: MeasurementIssueCode;
 };
 
@@ -211,6 +217,13 @@ export function parseMeasurementInput(
     values[field] = rounded;
   }
 
+  // A note is context, not a measurement: it is checked for length only and
+  // never counts towards the at-least-one-value rule below.
+  const note = (input.note ?? "").trim();
+  if (note.length > NOTE_MAX_LENGTH) {
+    issues.push({ field: "note", code: "NOTE_TOO_LONG" });
+  }
+
   // Only meaningful once the individual values are known to be sound: an
   // out-of-range weight is one problem, not two.
   if (
@@ -226,6 +239,10 @@ export function parseMeasurementInput(
 
   return {
     issues: [],
-    measurement: { measuredAt: (measuredAt as { date: Date }).date, values },
+    measurement: {
+      measuredAt: (measuredAt as { date: Date }).date,
+      values,
+      note: note.length > 0 ? note : null,
+    },
   };
 }

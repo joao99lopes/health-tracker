@@ -9,6 +9,7 @@ import {
   type MeasurementInput,
   type MeasurementIssue,
 } from "./validation.ts";
+import { NOTE_MAX_LENGTH } from "./fields.ts";
 
 test("rejects a measurement with no values", () => {
   assert.equal(hasAtLeastOneValue({}), false);
@@ -237,5 +238,50 @@ test("an implausible waist circumference is rejected", () => {
   assert.deepEqual(
     codes(parseMeasurementInput(input({ abdominalCircumferenceCm: "5" }), NOW)),
     ["abdominalCircumferenceCm:VALUE_OUT_OF_RANGE"],
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Notes
+// ---------------------------------------------------------------------------
+
+test("a measurement without a note parses with a null note", () => {
+  const result = parseMeasurementInput(input({ weightKg: "80" }), NOW);
+  assert.equal(result.measurement?.note, null);
+});
+
+test("a note is trimmed, and a blank one is stored as no note", () => {
+  const trimmed = parseMeasurementInput(
+    input({ weightKg: "80", note: "  after dinner \n" }),
+    NOW,
+  );
+  assert.equal(trimmed.measurement?.note, "after dinner");
+
+  const blank = parseMeasurementInput(input({ weightKg: "80", note: "   " }), NOW);
+  assert.equal(blank.measurement?.note, null);
+});
+
+test("a note alone does not count as a measurement value", () => {
+  assert.deepEqual(
+    codes(parseMeasurementInput(input({ note: "only a note" }), NOW)),
+    ["form:NO_VALUES"],
+  );
+});
+
+test("a note at the limit is accepted and one past it is rejected", () => {
+  const atLimit = parseMeasurementInput(
+    input({ weightKg: "80", note: "x".repeat(NOTE_MAX_LENGTH) }),
+    NOW,
+  );
+  assert.deepEqual(atLimit.issues, []);
+
+  assert.deepEqual(
+    codes(
+      parseMeasurementInput(
+        input({ weightKg: "80", note: "x".repeat(NOTE_MAX_LENGTH + 1) }),
+        NOW,
+      ),
+    ),
+    ["note:NOTE_TOO_LONG"],
   );
 });

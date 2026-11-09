@@ -44,3 +44,13 @@ test("an unreadable date reaches validation unchanged, and is rejected", () => {
     ["MEASURED_AT_INVALID", "NO_VALUES"],
   );
 });
+
+test("the note typed in the form reaches validation", () => {
+  const input = toMeasurementInput(
+    toLocalInputValue(new Date(2026, 8, 18, 8, 30)),
+    formValuesFrom({ weightKg: 81.4 }),
+    " fasted ",
+  );
+  const result = parseMeasurementInput(input, new Date(2026, 8, 18, 12, 0));
+  assert.equal(result.measurement?.note, "fasted");
+});
