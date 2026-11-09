@@ -10,6 +10,7 @@ test("a visitor without a session cookie is sent to the login page", () => {
 test("the auth pages are open without a session cookie", () => {
   assert.equal(proxyRedirect("/login", false), null);
   assert.equal(proxyRedirect("/register", false), null);
+  assert.equal(proxyRedirect("/forgot-password", false), null);
 });
 
 test("a session cookie lets app pages through to the server-side check", () => {

@@ -199,7 +199,7 @@ Prisma 7 changed two things that older examples get wrong:
   `process.loadEnvFile()` itself.
 
 Re-run `npm run db:generate` after every schema change - a stale client is
-reported by better-auth as a confusing "Prisma schema mismatch" at build time.
+reported as a confusing schema mismatch at build time.
 
 - `npm run db:generate` after changing `prisma/schema.prisma`
 - `npm run db:migrate` to create and apply a migration in development
@@ -244,10 +244,10 @@ GHCR `:latest` / `:<sha>`) and `builder` (the migration job, GHCR
 
 Things there are deliberate and easy to undo by accident:
 
-- The `build` stage sets **placeholder** `DATABASE_URL` and
-  `BETTER_AUTH_SECRET`. `prisma generate` and `next build` both read them while
-  evaluating module scope, and neither connects to anything. Real values are
-  injected at run time.
+- The `build` stage sets **placeholder** `DATABASE_URL`, `APP_URL` and
+  Firebase web config. `prisma generate` and `next build` read them, and
+  neither connects to anything. No secret is needed to build; real values
+  are injected at run time.
 - The runtime image has **no Prisma CLI** - it pulls in `effect`, `mysql2` and
   more. Migrations run from the one-shot `migrate` service, which uses the
   `builder` target and which `app` waits on via `service_completed_successfully`.
@@ -297,51 +297,59 @@ a `.dark` class, but nothing sets it. That belongs with the UI phase.
 
 ### Authentication
 
-**better-auth 1.7.18**, email and password only. No social login, no password
-reset, no email verification — all deliberately out of scope.
+**Firebase Auth** (`@firebase/auth` 1.13.8 in the browser, `firebase-admin`
+14.5.0 on the server), email and password only. Email verification is
+**required** before a session exists; password reset, change and account
+deletion are supported. No social login.
 
-- `src/lib/auth.ts` — server instance. The Prisma adapter, the password policy
-  and the session lifetime live here.
+How it fits together:
+
+- The browser proves the password to Firebase and sends the resulting **ID
+  token** to a server action (`src/app/(auth)/actions.ts`). The server
+  verifies it, checks the password was typed in the last five minutes, and
+  sets an httpOnly **Firebase session cookie** (`session`, 14 days). The
+  browser keeps no Firebase session of its own (in-memory persistence, signed
+  out after every flow).
 - `src/lib/auth/session.ts` — `requireUser()` / `getSessionUser()`. **This is
   the authoritative check.** Every route or query touching user data calls
-  `requireUser()` and scopes on the id it returns.
-- `src/proxy.ts` (Next 16 renamed middleware to proxy) — optimistic only. It checks that a session *cookie
-  exists*, nothing more, to avoid rendering a protected page for a signed-out
-  visitor. It is not access control.
-- `src/lib/auth/credentials.ts` — email and password rules shared by the form
-  and the server, so the two cannot drift. `src/lib/auth/email.ts` holds
-  normalisation.
-- `src/app/(app)/` requires a session via its layout; `src/app/(auth)/` is the
-  signed-out area.
+  `requireUser()` and scopes on the id it returns. The cookie is verified
+  locally (no network round trip per request); revocation is our own
+  `User.sessionsValidAfter`, set when the password changes.
+- `src/lib/auth/rules.ts` — the pure rules: cookie attributes, the
+  recent-sign-in window, revocation, which user a Firebase identity maps to
+  (`decideAccountLink`), and Firebase error codes → message keys. Tested.
+- `src/lib/firebase/admin.ts` / `client.tsx` — the SDKs. Only `app` and `auth`
+  entry points are imported, never the umbrella `firebase` package, so
+  Firestore and gRPC stay out of both bundles. The web config is read at run
+  time and handed to the browser by the root layout: one image fits any
+  Firebase project.
+- `src/proxy.ts` — optimistic only: checks that a session *cookie exists*,
+  nothing more. It is not access control, and it never redirects *away* from
+  an auth page (see `src/lib/auth/routing.ts`).
+- `src/lib/auth/credentials.ts` — email and password rules for the forms. Keep
+  `PASSWORD_MIN_LENGTH` equal to the password policy set in the Firebase
+  console, or the reset page Firebase hosts will accept shorter passwords.
 
-**The schema is better-auth's, not ours.** `User`, `Session`, `Account` and
-`Verification` come from `@better-auth/cli generate` — do not rename or remove
-fields by hand. Two consequences worth knowing:
+**Users table.** `User` holds no credentials: `email` (normalised, unique),
+`firebaseUid` (unique, null for a pre-Firebase account that has not signed in
+since) and `sessionsValidAfter`. A verified Firebase identity is linked to an
+existing row by email on first sign-in, never on an unverified address. Ids
+are strings: rows from before Firebase keep the old library's non-UUID ids.
 
-- The password hash lives on **`Account.password`** (scrypt), not on `User`.
-  There is no `User.passwordHash` column.
-- better-auth generates its own ids, which are not UUIDs, so `User.id` and
-  every `userId` foreign key are plain strings while our own rows keep UUID
-  primary keys.
+**Migrating accounts from before Firebase:** `scripts/firebase-migrate-users.mjs`
+(dry run by default, `--apply` to act) creates the Firebase accounts and has
+Firebase send each one a "set your password" email. See DEPLOYMENT.md.
 
-`User.name` is required by the library and is written as an empty string at
-registration; the product's optional display name belongs to `Profile`.
+**Local development without a Firebase project:** the Auth emulator. Set
+`FIREBASE_AUTH_EMULATOR_HOST`; the Admin SDK then needs no service account.
+Two differences from production to remember when testing:
 
-Emails are normalised (trimmed, lowercased) in the form, again in a
-`databaseHooks` hook, and backed by a unique index — so duplicate accounts are
-refused whatever casing is used.
+- The emulator **always** checks session-cookie revocation, so a password
+  change ends the old cookie there even though production relies on
+  `sessionsValidAfter`. The flows are written to work either way.
+- The browser and the server must reach the emulator under the same
+  `host:port`. With the app in a container, use a `*.localhost` name (Chrome
+  resolves it to 127.0.0.1) and `--add-host` it to the emulator's address.
 
-**Testing auth with `curl`** has three traps, all of them the harness's fault
-rather than the app's:
-
-- State-changing requests need an `Origin` header matching `BETTER_AUTH_URL`,
-  or better-auth answers `403 MISSING_OR_NULL_ORIGIN` / `Invalid origin`.
-- Repeated attempts hit the built-in rate limiter and come back `429`.
-- curl's cookie jar will not replay a cookie for a single-label host such as
-  the compose service name `app`. Capture `Set-Cookie` and pass
-  `-H "Cookie: ..."` explicitly, or you will chase a phantom "sessions are
-  broken in production" bug.
-
-`BETTER_AUTH_URL` must be the origin users actually type. On the Raspberry Pi
-that is the LAN address, not `localhost`, or every sign-in is rejected as a
-cross-origin request.
+Emails Firebase "sends" from the emulator are listed at
+`http://<emulator>/emulator/v1/projects/<project>/oobCodes`.

@@ -4,10 +4,13 @@
 #
 #   scripts/smoke-test.sh <app-image> <migrate-image>
 #
-# Checks that migrations apply, the app becomes healthy, /login renders
-# without a session, the security headers are present, a protected page
-# redirects, and a sign-up round-trips through the database. Everything it
-# creates is removed on exit. Needs docker and curl on the host.
+# Checks that migrations apply, the app becomes healthy, /api/health reaches
+# the database (and reports when it cannot), /login renders without a session
+# with the security headers, a protected page redirects, a forged session
+# cookie is refused without a redirect loop, and the runtime image carries no
+# build-only or unused heavy packages. Firebase is never contacted: the
+# Firebase variables are placeholders. Everything it creates is removed on
+# exit. Needs docker and curl on the host.
 set -Eeuo pipefail
 
 APP_IMAGE="${1:?usage: smoke-test.sh <app-image> <migrate-image>}"
@@ -48,8 +51,12 @@ docker run --rm --network "$NET" -e DATABASE_URL="$DB_URL" "$MIGRATE_IMAGE" \
 echo "--- app"
 docker run -d --name "${RUN}-app" --network "$NET" -p "127.0.0.1:${PORT}:3000" \
   -e DATABASE_URL="$DB_URL" \
-  -e BETTER_AUTH_SECRET="smoke-test-secret-not-used-anywhere-else" \
-  -e BETTER_AUTH_URL="$ORIGIN" \
+  -e APP_URL="$ORIGIN" \
+  -e FIREBASE_API_KEY=smoke-placeholder \
+  -e FIREBASE_AUTH_DOMAIN=smoke.invalid \
+  -e FIREBASE_PROJECT_ID=smoke-placeholder \
+  -e FIREBASE_CLIENT_EMAIL=smoke@smoke.invalid \
+  -e FIREBASE_PRIVATE_KEY=not-a-key \
   "$APP_IMAGE" >/dev/null
 
 status=""
@@ -60,6 +67,10 @@ for _ in $(seq 1 60); do
   sleep 2
 done
 [ "$status" = "healthy" ] || fail "app container is '$status', expected healthy"
+
+health="$(curl -sS "${ORIGIN}/api/health")"
+[ "$health" = '{"status":"ok"}' ] || fail "/api/health answered $health"
+echo "ok   /api/health reaches the database"
 
 headers="$(curl -sS -D - -o /dev/null "${ORIGIN}/login")"
 grep -q "^HTTP/1.1 200" <<<"$headers" || fail "/login did not answer 200"
@@ -73,20 +84,19 @@ code="$(curl -sS -o /dev/null -w '%{http_code}' "${ORIGIN}/")"
 [ "$code" = "307" ] || fail "/ without a session answered $code, expected 307"
 echo "ok   / redirects when signed out"
 
-# A cookie whose session does not exist must not cause a redirect loop
-# between /login and /.
+# A forged or stale session cookie must be refused, and must not cause a
+# redirect loop between /login and /.
 code="$(curl -sS -o /dev/null -w '%{http_code}' \
-  -H "Cookie: better-auth.session_token=stale.invalid" "${ORIGIN}/login")"
+  -H "Cookie: session=forged.session.cookie" "${ORIGIN}/login")"
 [ "$code" = "200" ] || fail "/login with a stale session cookie answered $code, expected 200"
-echo "ok   a stale session cookie does not loop"
+code="$(curl -sS -o /dev/null -w '%{http_code}' -H "Cookie: session=forged.session.cookie" "${ORIGIN}/")"
+[ "$code" = "307" ] || fail "/ with a forged session cookie answered $code, expected 307"
+echo "ok   a forged session cookie is refused without looping"
 
-code="$(curl -sS -o /dev/null -w '%{http_code}' -X POST "${ORIGIN}/api/auth/sign-up/email" \
-  -H "Origin: ${ORIGIN}" -H "Content-Type: application/json" \
-  -d '{"email":"smoke@example.test","password":"smoke-test-password-1","name":""}')"
-[ "$code" = "200" ] || fail "sign-up answered $code, expected 200"
-users="$(docker exec "${RUN}-db" psql -U smoke -d smoke -Atc 'select count(*) from "User"')"
-[ "$users" = "1" ] || fail "sign-up did not write a user row (found $users)"
-echo "ok   sign-up reaches the database"
+# The runtime image must not carry build-only or unused heavy packages.
+unwanted="$(docker exec "${RUN}-app" sh -c 'ls -d node_modules/sharp node_modules/@img node_modules/@google-cloud node_modules/@grpc node_modules/prisma 2>/dev/null' || true)"
+[ -z "$unwanted" ] || fail "the runtime image contains: $unwanted"
+echo "ok   no sharp, Firestore, gRPC or Prisma CLI in the runtime image"
 
 # CI bakes the commit SHA in; check it actually reached the running app.
 if [ -n "${EXPECTED_VERSION:-}" ]; then
@@ -94,5 +104,11 @@ if [ -n "${EXPECTED_VERSION:-}" ]; then
   [ "$actual" = "$EXPECTED_VERSION" ] || fail "APP_VERSION is '$actual', expected '$EXPECTED_VERSION'"
   echo "ok   the image carries version $EXPECTED_VERSION"
 fi
+
+# Last, because it takes the database away: the probe must say so.
+docker stop "${RUN}-db" >/dev/null
+code="$(curl -sS -o /dev/null -w '%{http_code}' -m 15 "${ORIGIN}/api/health")"
+[ "$code" = "503" ] || fail "/api/health with the database down answered $code, expected 503"
+echo "ok   /api/health reports a database outage"
 
 echo "PASS"

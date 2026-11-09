@@ -1,8 +1,11 @@
 import "server-only";
 
-import { headers } from "next/headers";
+import { cache } from "react";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { adminAuth } from "@/lib/firebase/admin";
+import { SESSION_COOKIE, isSessionCurrent } from "@/lib/auth/rules";
 
 /**
  * Server-side session access.
@@ -10,6 +13,11 @@ import { auth } from "@/lib/auth";
  * This is the authoritative check. The proxy only looks at whether a session
  * cookie exists, which is enough to redirect early but proves nothing - every
  * route that reads user data must call `requireUser`.
+ *
+ * The cookie is a Firebase session cookie. It is verified locally against
+ * Google's published signing keys (cached by the Admin SDK), not by asking
+ * Google on every request: a page load on the Pi costs no network round trip.
+ * Revocation is handled here instead - see `isSessionCurrent`.
  */
 
 export type SessionUser = {
@@ -17,14 +25,38 @@ export type SessionUser = {
   email: string;
 };
 
-/** The signed-in user, or null. Never throws. */
-export async function getSessionUser(): Promise<SessionUser | null> {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) {
+/**
+ * The signed-in user, or null. Never throws.
+ *
+ * Wrapped in `cache` so the layout, the page and the translations of one
+ * request verify the cookie and read the user row once between them.
+ */
+export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
+  const cookie = (await cookies()).get(SESSION_COOKIE)?.value;
+  if (!cookie) {
     return null;
   }
-  return { id: session.user.id, email: session.user.email };
-}
+
+  let uid: string;
+  let authTime: number;
+  try {
+    const decoded = await adminAuth().verifySessionCookie(cookie);
+    uid = decoded.uid;
+    authTime = decoded.auth_time;
+  } catch {
+    // Expired, malformed, or signed by someone else: simply not signed in.
+    return null;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { firebaseUid: uid },
+    select: { id: true, email: true, sessionsValidAfter: true },
+  });
+  if (!user || !isSessionCurrent(authTime, user.sessionsValidAfter)) {
+    return null;
+  }
+  return { id: user.id, email: user.email };
+});
 
 /**
  * The signed-in user, or a redirect to the login page.

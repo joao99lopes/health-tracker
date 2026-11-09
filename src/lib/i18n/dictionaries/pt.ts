@@ -112,25 +112,69 @@ export const pt: Dictionary = {
       title: "Iniciar sessão",
       description: "As suas medições, no seu próprio servidor.",
       submit: "Iniciar sessão",
-      failed: "Email ou palavra-passe incorretos.",
+      forgot: "Esqueceu-se da palavra-passe?",
+      unverified:
+        "Confirme primeiro o seu email: abra a ligação no email que enviámos quando criou a conta.",
+      resend: "Enviar o email de novo",
+      verificationSent: "Enviado. Veja a sua caixa de entrada (e a pasta de spam).",
       alternatePrompt: "Ainda não tem conta?",
       alternateLabel: "Criar conta",
     },
     register: {
       title: "Criar conta",
-      description: "Email e palavra-passe. Não é preciso mais nada.",
+      description: "Email e palavra-passe. Vai confirmar o endereço por email.",
       submit: "Criar conta",
-      duplicate: "Já existe uma conta com esse email.",
-      failed: "Não foi possível criar a conta. Tente novamente.",
+      verificationSent: (email: string) =>
+        `Quase lá. Enviámos uma ligação para ${email} - abra-a para confirmar o endereço e depois inicie sessão.`,
       alternatePrompt: "Já tem conta?",
       alternateLabel: "Iniciar sessão",
+    },
+    forgot: {
+      title: "Repor a palavra-passe",
+      description: "Enviamos-lhe por email uma ligação para escolher uma nova palavra-passe.",
+      submit: "Enviar a ligação",
+      sent: "Se existir uma conta com esse endereço, a ligação está a caminho. Veja a sua caixa de entrada (e a pasta de spam).",
+      alternatePrompt: "Lembrou-se?",
+      alternateLabel: "Iniciar sessão",
+    },
+    errors: {
+      invalidCredentials: "Email ou palavra-passe incorretos.",
+      emailInUse: "Já existe uma conta com esse email.",
+      emailTaken:
+        "Esse email já está associado a outra conta. Inicie sessão com essa conta.",
+      weakPassword: "Essa palavra-passe não é aceite. Escolha uma mais longa.",
+      tooManyRequests: "Demasiadas tentativas. Aguarde alguns minutos e tente novamente.",
+      network: "Não foi possível contactar o serviço de autenticação. Verifique a ligação e tente novamente.",
+      failed: "Algo correu mal. Tente novamente.",
     },
     issues: {
       EMAIL_REQUIRED: "Introduza o seu email.",
       EMAIL_INVALID: "Isso não parece um endereço de email.",
+      PASSWORD_REQUIRED: "Introduza a sua palavra-passe.",
       PASSWORD_TOO_SHORT: (min: number) => `Use pelo menos ${min} caracteres.`,
       PASSWORD_TOO_LONG: "Essa palavra-passe é demasiado longa.",
     },
+  },
+
+  account: {
+    title: "Conta",
+    signedInAs: (email: string) => `Sessão iniciada como ${email}.`,
+    changePassword: "Mudar a palavra-passe",
+    changePasswordDescription:
+      "Continua com a sessão iniciada aqui; todos os outros dispositivos terminam a sessão.",
+    currentPassword: "Palavra-passe atual",
+    newPassword: "Nova palavra-passe",
+    changePasswordSubmit: "Mudar a palavra-passe",
+    passwordChanged: "Palavra-passe alterada. Os outros dispositivos terminaram a sessão.",
+    deleteTitle: "Apagar a conta",
+    deleteDescription:
+      "Apaga para sempre a sua conta, o perfil e todas as medições. Descarregue primeiro os seus dados se os quiser guardar.",
+    deleteButton: "Apagar a conta…",
+    deleteConfirmTitle: "Apagar a sua conta?",
+    deleteConfirmDescription:
+      "Tudo o que registou é apagado e não pode ser recuperado. Introduza a sua palavra-passe para confirmar.",
+    deleteConfirm: "Apagar tudo",
+    deleting: "A apagar…",
   },
 
   data: {

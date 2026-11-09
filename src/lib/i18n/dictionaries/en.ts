@@ -111,27 +111,71 @@ export const en = {
       title: "Sign in",
       description: "Your measurements, on your own server.",
       submit: "Sign in",
-      // Deliberately vague: distinguishing "no such account" from "wrong
-      // password" tells an attacker which addresses are registered.
-      failed: "Incorrect email or password.",
+      forgot: "Forgot your password?",
+      unverified:
+        "Confirm your email address first: open the link in the email we sent when you registered.",
+      resend: "Send the email again",
+      verificationSent: "Sent. Check your inbox (and the spam folder).",
       alternatePrompt: "No account yet?",
       alternateLabel: "Create one",
     },
     register: {
       title: "Create an account",
-      description: "Email and password. Nothing else is required.",
+      description: "Email and password. You will confirm the address by email.",
       submit: "Create account",
-      duplicate: "An account with that email already exists.",
-      failed: "Could not create the account. Please try again.",
+      verificationSent: (email: string) =>
+        `Almost there. We sent a link to ${email} - open it to confirm the address, then sign in.`,
       alternatePrompt: "Already registered?",
       alternateLabel: "Sign in",
+    },
+    forgot: {
+      title: "Reset your password",
+      description: "We will email you a link to choose a new password.",
+      submit: "Send the link",
+      sent: "If an account uses that address, the link is on its way. Check your inbox (and the spam folder).",
+      alternatePrompt: "Remembered it?",
+      alternateLabel: "Sign in",
+    },
+    // Deliberately vague where it matters: distinguishing "no such account"
+    // from "wrong password" tells an attacker which addresses are registered.
+    errors: {
+      invalidCredentials: "Incorrect email or password.",
+      emailInUse: "An account with that email already exists.",
+      emailTaken:
+        "That email is already linked to another account. Sign in with that account instead.",
+      weakPassword: "That password is not accepted. Choose a longer one.",
+      tooManyRequests: "Too many attempts. Wait a few minutes and try again.",
+      network: "Could not reach the sign-in service. Check the connection and try again.",
+      failed: "Something went wrong. Please try again.",
     },
     issues: {
       EMAIL_REQUIRED: "Enter your email address.",
       EMAIL_INVALID: "That does not look like an email address.",
+      PASSWORD_REQUIRED: "Enter your password.",
       PASSWORD_TOO_SHORT: (min: number) => `Use at least ${min} characters.`,
       PASSWORD_TOO_LONG: "That password is too long.",
     },
+  },
+
+  account: {
+    title: "Account",
+    signedInAs: (email: string) => `Signed in as ${email}.`,
+    changePassword: "Change password",
+    changePasswordDescription:
+      "You will stay signed in here; every other device is signed out.",
+    currentPassword: "Current password",
+    newPassword: "New password",
+    changePasswordSubmit: "Change password",
+    passwordChanged: "Password changed. Other devices have been signed out.",
+    deleteTitle: "Delete account",
+    deleteDescription:
+      "Permanently deletes your account, your profile and every measurement. Download your data first if you want to keep it.",
+    deleteButton: "Delete account…",
+    deleteConfirmTitle: "Delete your account?",
+    deleteConfirmDescription:
+      "Everything you recorded is deleted and cannot be recovered. Enter your password to confirm.",
+    deleteConfirm: "Delete everything",
+    deleting: "Deleting…",
   },
 
   data: {

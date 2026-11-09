@@ -46,7 +46,7 @@ test("only development may open WebSockets, for hot reload", () => {
 
 test("everything is restricted to the app's own origin", () => {
   const csp = header("Content-Security-Policy");
-  for (const name of ["default-src", "connect-src", "font-src", "form-action"]) {
+  for (const name of ["default-src", "font-src", "form-action"]) {
     assert.deepEqual(directive(csp, name), ["'self'"], name);
   }
   assert.deepEqual(directive(csp, "object-src"), ["'none'"]);
@@ -62,4 +62,23 @@ test("does not upgrade requests or pin HTTPS while served over HTTP", () => {
 test("sends nosniff and a same-origin referrer policy", () => {
   assert.equal(header("X-Content-Type-Options"), "nosniff");
   assert.equal(header("Referrer-Policy"), "same-origin");
+});
+
+test("the browser may reach this origin and Firebase Auth, nothing else", () => {
+  assert.deepEqual(directive(header("Content-Security-Policy"), "connect-src"), [
+    "'self'",
+    "https://identitytoolkit.googleapis.com",
+    "https://securetoken.googleapis.com",
+  ]);
+});
+
+test("the Auth emulator is reachable only when configured", () => {
+  const withEmulator = securityHeaders(false, { authEmulatorHost: "localhost:9099" }).find(
+    (h) => h.key === "Content-Security-Policy",
+  );
+  assert.ok(withEmulator);
+  assert.ok(directive(withEmulator.value, "connect-src").includes("http://localhost:9099"));
+  assert.ok(
+    !directive(header("Content-Security-Policy"), "connect-src").some((s) => s.startsWith("http://")),
+  );
 });

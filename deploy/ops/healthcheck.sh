@@ -2,8 +2,9 @@
 # Health check of health-tracker only (cron, every 5 minutes).
 #
 # Checks: both long-running containers are up and healthy, the last migration
-# run succeeded, and the app answers GET /login with 200. Host-level checks
-# (disk, temperature, other services) belong to the host, not to this repo.
+# run succeeded, and GET /api/health answers 200 (the app is up and its
+# database answers a query). Host-level checks (disk, temperature, other
+# services) belong to the host, not to this repo.
 #
 # Silent on success. On failure it appends one line to
 # $BACKUP_ROOT/healthcheck.log and exits 1. With HC_CHECK_URL in ./monitor.env
@@ -18,7 +19,7 @@ DEPLOY_DIR="$(dirname "$OPS_DIR")"
 [ -f "$OPS_DIR/monitor.env" ] && . "$OPS_DIR/monitor.env"
 
 BACKUP_ROOT="${BACKUP_ROOT:-$HOME/backups/health-tracker}"
-APP_URL="${APP_HEALTH_URL:-http://127.0.0.1:3000/login}"
+APP_URL="${APP_HEALTH_URL:-http://127.0.0.1:3000/api/health}"
 LOG="$BACKUP_ROOT/healthcheck.log"
 mkdir -p "$BACKUP_ROOT"
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { TriangleAlertIcon } from "lucide-react";
+import { CircleCheckIcon, TriangleAlertIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -20,6 +20,7 @@ import { normalizeEmail } from "@/lib/auth/email";
 import {
   PASSWORD_MIN_LENGTH,
   validateCredentials,
+  validateEmail,
   type CredentialIssue,
 } from "@/lib/auth/credentials";
 import { useTranslations } from "@/lib/i18n/context";
@@ -59,30 +60,76 @@ function FieldIssues({
   );
 }
 
+/**
+ * What a submission led to.
+ *
+ * - `done`: signed in; the form goes to the dashboard.
+ * - `notice`: worked, and there is something to read (an email was sent);
+ *   the form stays.
+ * - `error`: did not work. `followUp` offers one more step, such as sending
+ *   the confirmation email again, whose own result replaces the message.
+ */
+export type CredentialOutcome =
+  | { kind: "done" }
+  | { kind: "notice"; message: string }
+  | { kind: "error"; message: string; followUp?: FollowUp };
+
+type FollowUp = { label: string; run: () => Promise<CredentialOutcome> };
+
+function FollowUpButton({
+  followUp,
+  disabled,
+  onRun,
+}: {
+  followUp: FollowUp;
+  disabled: boolean;
+  onRun: (run: FollowUp["run"]) => void;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      disabled={disabled}
+      onClick={() => onRun(followUp.run)}
+    >
+      {followUp.label}
+    </Button>
+  );
+}
+
 export type CredentialSubmit = (credentials: {
   email: string;
   password: string;
-}) => Promise<{ error?: string }>;
+}) => Promise<CredentialOutcome>;
 
 /**
- * Shared login/register form.
+ * Shared sign-in / register / forgot-password form.
  *
- * Client-side validation mirrors the server using the same module, so the two
- * cannot disagree. It is a convenience only - the server validates again.
+ * Client-side validation uses the shared credentials module. The password
+ * itself never reaches this app's server: it goes to Firebase, which applies
+ * its own policy too.
  */
 export function CredentialForm({
   title,
   description,
   submitLabel,
   passwordAutoComplete,
+  newPassword,
   onSubmit,
+  passwordHelp,
   alternate,
 }: {
   title: string;
   description: string;
   submitLabel: string;
-  passwordAutoComplete: "current-password" | "new-password";
+  /** Null for the email-only form (forgot password). */
+  passwordAutoComplete: "current-password" | "new-password" | null;
+  /** Whether the password is being chosen now (length rules apply). */
+  newPassword: boolean;
   onSubmit: CredentialSubmit;
+  /** Shown under the password field, such as a "forgot password" link. */
+  passwordHelp?: { href: string; label: string };
   alternate: { prompt: string; href: string; label: string };
 }) {
   const router = useRouter();
@@ -90,15 +137,18 @@ export function CredentialForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [issues, setIssues] = useState<CredentialIssue[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<CredentialOutcome | null>(null);
   const [pending, setPending] = useState(false);
   const hydrated = useHydrated();
+  const withPassword = passwordAutoComplete !== null;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(null);
+    setOutcome(null);
 
-    const found = validateCredentials({ email, password });
+    const found = withPassword
+      ? validateCredentials({ email, password }, { passwordRules: newPassword })
+      : validateEmail(email);
     setIssues(found);
     if (found.length > 0) {
       return;
@@ -108,13 +158,21 @@ export function CredentialForm({
     const result = await onSubmit({ email: normalizeEmail(email), password });
     setPending(false);
 
-    if (result.error) {
-      setError(result.error);
+    if (result.kind === "done") {
+      router.replace("/");
+      router.refresh();
       return;
     }
+    if (result.kind === "notice") {
+      setPassword("");
+    }
+    setOutcome(result);
+  }
 
-    router.replace("/");
-    router.refresh();
+  async function runFollowUp(run: () => Promise<CredentialOutcome>) {
+    setPending(true);
+    setOutcome(await run());
+    setPending(false);
   }
 
   const hasIssue = (field: "email" | "password") =>
@@ -156,33 +214,61 @@ export function CredentialForm({
             <FieldIssues id="email-issues" field="email" issues={issues} t={t} />
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="password">{t.auth.password}</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete={passwordAutoComplete}
-              required
-              aria-invalid={hasIssue("password") || undefined}
-              aria-describedby={
-                hasIssue("password") ? "password-issues" : undefined
-              }
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-            <FieldIssues
-              id="password-issues"
-              field="password"
-              issues={issues}
-              t={t}
-            />
-          </div>
+          {withPassword && (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-baseline justify-between gap-3">
+                <Label htmlFor="password">{t.auth.password}</Label>
+                {passwordHelp && (
+                  <Link
+                    href={passwordHelp.href}
+                    className="text-muted-foreground hover:text-foreground text-xs underline-offset-4 hover:underline"
+                  >
+                    {passwordHelp.label}
+                  </Link>
+                )}
+              </div>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete={passwordAutoComplete}
+                required
+                aria-invalid={hasIssue("password") || undefined}
+                aria-describedby={
+                  hasIssue("password") ? "password-issues" : undefined
+                }
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+              <FieldIssues
+                id="password-issues"
+                field="password"
+                issues={issues}
+                t={t}
+              />
+            </div>
+          )}
 
-          {error && (
+          {outcome?.kind === "error" && (
             <Alert variant="destructive">
               <TriangleAlertIcon />
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription className="flex flex-col items-start gap-2">
+                <p>{outcome.message}</p>
+                {outcome.followUp && (
+                  <FollowUpButton
+                    followUp={outcome.followUp}
+                    disabled={pending}
+                    onRun={runFollowUp}
+                  />
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {outcome?.kind === "notice" && (
+            <Alert>
+              <CircleCheckIcon />
+              <AlertDescription>{outcome.message}</AlertDescription>
             </Alert>
           )}
 

@@ -17,7 +17,10 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/:path*",
-        headers: securityHeaders(process.env.NODE_ENV === "development"),
+        headers: securityHeaders(process.env.NODE_ENV === "development", {
+          // Only ever set for local development against the emulator.
+          authEmulatorHost: process.env.FIREBASE_AUTH_EMULATOR_HOST || null,
+        }),
       },
     ];
   },

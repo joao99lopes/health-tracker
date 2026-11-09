@@ -46,8 +46,11 @@ Cloudflare Tunnel is not configured. Production is LAN-only for now.
   sudo usermod -aG docker "$USER"   # log out and back in
   ```
 
-- A static or DHCP-reserved LAN IP. It goes into `BETTER_AUTH_URL`, and
-  sign-in breaks if it changes.
+- A static or DHCP-reserved LAN IP. It goes into `APP_URL`, and the
+  session cookie and Firebase's emails depend on it.
+- Internet access: signing in goes through Firebase Auth. Pages of an
+  already signed-in browser keep working offline (the session cookie is
+  verified locally), but signing in, registering and password resets do not.
 - Roughly 1 GB free disk for the images (app ≈ 280 MB, migrate ≈ 610 MB,
   postgres ≈ 400 MB as Docker reports them on the Pi).
 - Optional, for off-site backups: `rclone` with an encrypted remote (see
@@ -72,22 +75,25 @@ committed; `.env.example` is committed and must never hold real secrets.
 | `POSTGRES_PASSWORD`     | **yes**    | —                | `db`, `app`        | Compose refuses to start without it. |
 | `POSTGRES_DB`           | no         | `health_tracker` | `db`, `app`        | |
 | `DATABASE_URL`          | dev only   | —                | host `npm` tooling | Points at `localhost:5432`. The containers ignore it — Compose builds its own pointing at the `db` service. |
-| `BETTER_AUTH_SECRET`    | **yes**    | —                | `app`              | Session cookie signing key. **Minimum 32 characters**; the app refuses to start below that. Generate with `openssl rand -base64 32`. |
-| `BETTER_AUTH_URL`       | **yes** in production | `http://localhost:3000` in dev | `app` | The origin users actually type. See the warning below. |
+| `APP_URL`               | **yes** in production | `http://localhost:3000` in dev | `app` | The origin users actually type, e.g. `http://192.168.1.170:3000`. Decides whether the session cookie is `Secure`. |
+| `FIREBASE_API_KEY`      | **yes**    | —                | `app`              | Firebase web config. Public by design. |
+| `FIREBASE_AUTH_DOMAIN`  | **yes**    | —                | `app`              | Firebase web config, e.g. `my-project.firebaseapp.com`. |
+| `FIREBASE_PROJECT_ID`   | **yes**    | —                | `app`              | Firebase web config. |
+| `FIREBASE_CLIENT_EMAIL` | **yes** (not with the emulator) | — | `app` | Service account. **Secret**, with the key below. |
+| `FIREBASE_PRIVATE_KEY`  | **yes** (not with the emulator) | — | `app` | Service account private key: one line, in double quotes, `
+` escapes kept as in the JSON. **Secret.** |
+| `FIREBASE_AUTH_EMULATOR_HOST` | dev only | — | `app`, scripts | `host:port` of the Firebase Auth emulator. Never set in production. |
 
-> **`BETTER_AUTH_URL` is the single most common deployment mistake.** On the Pi
-> it must be the LAN origin users type, e.g. `http://192.168.1.50:3000` — not
-> `localhost`. better-auth checks the `Origin` header of every state-changing
-> request against it, so a wrong value rejects **every sign-in** as
-> cross-origin. There is deliberately no production fallback: Compose fails
-> fast with a readable message rather than mis-configuring silently.
+Where each Firebase value comes from is written next to it in `.env.example`.
+The web config is read at run time, so changing it needs a restart, not a
+rebuild.
 
 ---
 
 ## Development workflow
 
 ```sh
-cp .env.example .env     # set POSTGRES_PASSWORD, DATABASE_URL, BETTER_AUTH_SECRET
+cp .env.example .env     # set POSTGRES_PASSWORD, DATABASE_URL and the FIREBASE_* values
 ```
 
 Start PostgreSQL, with the dev overlay so port 5432 is published to the host:
@@ -141,6 +147,32 @@ into `.next/types/`, so a standalone `tsc` on a clean tree reports them missing.
 
 ---
 
+## Firebase project
+
+Sign-in runs on Firebase Auth (free for email and password). One project
+serves every environment that points at it; create it once.
+
+1. **Create the project** at <https://console.firebase.google.com> (Analytics
+   is not needed).
+2. **Authentication → Sign-in method:** enable **Email/Password** (not the
+   passwordless email link).
+3. **Authentication → Settings → Password policy:** require a minimum length
+   of **12**, matching `PASSWORD_MIN_LENGTH` in `src/lib/auth/credentials.ts`.
+   Without it, the reset page Firebase hosts accepts shorter passwords.
+4. **Authentication → Templates** (optional): the sender name and language of
+   the verification and reset emails.
+5. **Project settings → General → Your apps:** add a **Web** app. Its config
+   gives `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN` and `FIREBASE_PROJECT_ID`.
+6. **Project settings → Service accounts → Generate new private key:** from
+   the downloaded JSON copy `client_email` to `FIREBASE_CLIENT_EMAIL` and
+   `private_key` to `FIREBASE_PRIVATE_KEY`, then delete the file. Anyone with
+   these two can manage every account.
+
+Nothing needs adding to *Authorized domains*: email and password sign-in does
+not redirect, and the emails send people to pages Firebase hosts.
+
+---
+
 ## First deployment (Raspberry Pi)
 
 The repository is cloned on the Pi only for `deploy/` — the compose file and
@@ -156,8 +188,12 @@ Edit `deploy/.env`:
 
 ```sh
 POSTGRES_PASSWORD=<a real password>
-BETTER_AUTH_SECRET=<openssl rand -base64 32>
-BETTER_AUTH_URL=http://192.168.1.170:3000    # this Pi's LAN address
+APP_URL=http://192.168.1.170:3000           # this Pi's LAN address
+FIREBASE_API_KEY=...                        # see "Firebase project" above
+FIREBASE_AUTH_DOMAIN=...
+FIREBASE_PROJECT_ID=...
+FIREBASE_CLIENT_EMAIL=...
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 ```
 
 Pull and start:
@@ -211,8 +247,7 @@ schema and the migrations and nothing else.
 | Apply migrations | production | automatic on `up`; or `docker compose run --rm migrate` |
 
 After changing `prisma/schema.prisma`, always re-run `npm run db:generate`. A
-stale client surfaces as a confusing "Prisma schema mismatch" from better-auth
-at build time.
+stale client surfaces as a confusing schema mismatch at build time.
 
 ---
 
@@ -256,6 +291,34 @@ reboot or a crash.
 `up -d` re-runs `migrate` before restarting `app`. Check the profile page shows
 the new short SHA.
 
+**Moving an installation from before Firebase (one-off).** The migration
+`20261110090000_move_auth_to_firebase` drops the old sessions and password
+hashes and keeps every user, profile and measurement. In order:
+
+1. Back up: `deploy/ops/backup.sh`, and check `backup.log` says OK.
+2. In `deploy/.env`, add `APP_URL` and the `FIREBASE_*` variables; remove
+   `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL`.
+3. `docker compose pull && docker compose up -d` — `migrate` applies the change.
+4. List the accounts still to move, on the Pi:
+
+   ```sh
+   docker compose exec -T db sh -c \
+     'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "select email from \"User\" where \"firebaseUid\" is null"'
+   ```
+
+5. From a machine with the repository and the same `FIREBASE_*` values in its
+   `.env`, move them — a dry run first:
+
+   ```sh
+   node scripts/firebase-migrate-users.mjs a@example.com b@example.com
+   node scripts/firebase-migrate-users.mjs --apply a@example.com b@example.com
+   ```
+
+   This creates each Firebase account (marked verified) and has Firebase send
+   it a "set your password" email.
+6. Each person sets a password from that email and signs in; the first
+   sign-in links the Firebase account to their existing data.
+
 **Rolling back.** Every image is also tagged with its commit SHA. Pin both
 images in `deploy/compose.yaml` to the previous one —
 `:<sha>` for `app`, `:migrate-<sha>` for `migrate` — and `docker compose up -d`.
@@ -273,7 +336,7 @@ the Pi keeps its own, with its own healthchecks.io checks. Host-level checks
 | Script | Schedule | Does |
 | ------ | -------- | ---- |
 | `backup.sh` | daily, `30 3 * * *` | `pg_dump` + this service's `.env` to `~/backups/health-tracker/AAAA-MM-DD` (7 days), and to `gdrive-crypt:impiza/health-tracker` (30 days) when that rclone remote exists |
-| `healthcheck.sh` | every 5 min | `db` and `app` healthy, last `migrate` exited 0, `GET /login` is 200; silent on success |
+| `healthcheck.sh` | every 5 min | `db` and `app` healthy, last `migrate` exited 0, `GET /api/health` is 200 (app and database); silent on success |
 | `restore-test.sh` | by hand, monthly | restores the newest dump into a throwaway PostgreSQL and counts users, profiles, measurements and migrations |
 
 Set up:
@@ -316,20 +379,27 @@ docker compose logs migrate          # did migrations apply?
 
 ## Troubleshooting
 
-**Sign-in always fails, or the browser reports an invalid origin / 403.**
-`BETTER_AUTH_URL` does not match the origin you typed. On the Pi it must be the
-LAN address (`http://192.168.1.50:3000`), not `localhost`, and the port must
-match. Fix `.env`, then `docker compose up -d`.
+**Every sign-in says "Something went wrong".**
+The server could not verify the Firebase token or mint the session. `docker
+compose logs app | grep '\[auth\]'` names the failing step and Firebase's
+error code (never a token or an address). Usual causes: `FIREBASE_PROJECT_ID`
+does not match the web config, or `FIREBASE_PRIVATE_KEY` lost its quotes or its
+`\n` escapes.
 
-**`required variable BETTER_AUTH_URL is missing a value`.**
+**"Could not reach the sign-in service".**
+The Pi, or the browser, has no internet access. Firebase Auth needs it for
+signing in; an existing session keeps working without it.
+
+**"Confirm your email address first".**
+By design: no session until the address is verified. The message offers to
+send the email again; check the spam folder.
+
+**`required variable APP_URL is missing a value`.**
 Compose is doing its job — set it in `.env`. Same for `POSTGRES_PASSWORD` and
-`BETTER_AUTH_SECRET`.
+every `FIREBASE_*` variable.
 
-**`BETTER_AUTH_SECRET must be at least 32 characters`.**
-Still on the `change-me` placeholder. Generate one: `openssl rand -base64 32`.
-
-**Repeated sign-in attempts return 429.**
-better-auth's built-in rate limiter. Wait it out; it is not a bug.
+**"Too many attempts".**
+Firebase's own protection against password guessing. Wait it out.
 
 **Development: host cannot connect to PostgreSQL.**
 You started the stack without the dev overlay, so no port is published. Use:
@@ -352,8 +422,8 @@ database that has not finished starting.
 
 **Port 3000 already in use.**
 Something else holds it. Find it with `sudo ss -ltnp | grep 3000`, or change
-the published port in `docker-compose.yml`, remembering to update
-`BETTER_AUTH_URL` to match.
+the published port in `deploy/compose.yaml`, remembering to update `APP_URL`
+to match.
 
 **Out of disk on the Pi.**
 `docker image prune -f` reclaims superseded images after an update.

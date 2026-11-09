@@ -22,7 +22,21 @@
 
 export type SecurityHeader = { key: string; value: string };
 
-function contentSecurityPolicy(isDevelopment: boolean): string {
+/**
+ * Where the browser talks to Firebase Auth: the sign-in API and the token
+ * service. Nothing else leaves this origin.
+ */
+export const FIREBASE_AUTH_ORIGINS = [
+  "https://identitytoolkit.googleapis.com",
+  "https://securetoken.googleapis.com",
+] as const;
+
+type CspOptions = {
+  /** The Firebase Auth emulator (`host:port`), development only. */
+  authEmulatorHost?: string | null;
+};
+
+function contentSecurityPolicy(isDevelopment: boolean, options: CspOptions): string {
   const directives: Record<string, string[]> = {
     "default-src": ["'self'"],
     // React's development build evaluates code for debugging; production does not.
@@ -35,8 +49,14 @@ function contentSecurityPolicy(isDevelopment: boolean): string {
     "img-src": ["'self'", "blob:", "data:"],
     // next/font serves its files from this origin.
     "font-src": ["'self'"],
-    // `next dev` pushes hot reloads over a WebSocket; production has none.
-    "connect-src": ["'self'", ...(isDevelopment ? ["ws:"] : [])],
+    // Firebase Auth, the emulator when one is configured, and the WebSocket
+    // `next dev` pushes hot reloads over (production has none).
+    "connect-src": [
+      "'self'",
+      ...FIREBASE_AUTH_ORIGINS,
+      ...(options.authEmulatorHost ? [`http://${options.authEmulatorHost}`] : []),
+      ...(isDevelopment ? ["ws:"] : []),
+    ],
     "object-src": ["'none'"],
     "base-uri": ["'self'"],
     "form-action": ["'self'"],
@@ -47,11 +67,14 @@ function contentSecurityPolicy(isDevelopment: boolean): string {
     .join("; ");
 }
 
-export function securityHeaders(isDevelopment: boolean): SecurityHeader[] {
+export function securityHeaders(
+  isDevelopment: boolean,
+  options: CspOptions = {},
+): SecurityHeader[] {
   return [
     {
       key: "Content-Security-Policy",
-      value: contentSecurityPolicy(isDevelopment),
+      value: contentSecurityPolicy(isDevelopment, options),
     },
     // Superseded by `frame-ancestors` in browsers that support CSP; kept for
     // those that do not.

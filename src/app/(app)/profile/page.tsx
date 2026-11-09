@@ -1,3 +1,4 @@
+import { AccountSection } from "@/components/profile/account-section";
 import { DataSection } from "@/components/profile/data-section";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { PageHeader } from "@/components/page-header";
@@ -22,6 +23,8 @@ export default async function ProfilePage() {
       <ProfileForm profile={profile} fallbackLanguage={language} />
 
       <DataSection profileHeightCm={profile?.heightCm ?? null} />
+
+      <AccountSection email={user.email} />
 
       {/* Which build is running - useful after a deploy or a rollback. */}
       <p className="text-muted-foreground text-center text-xs">

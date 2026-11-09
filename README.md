@@ -13,7 +13,7 @@ See [CLAUDE.md](./CLAUDE.md) for the full project context and conventions.
 ## Getting started
 
 ```sh
-cp .env.example .env   # then set POSTGRES_PASSWORD, DATABASE_URL and BETTER_AUTH_SECRET
+cp .env.example .env   # then set POSTGRES_PASSWORD, DATABASE_URL and the FIREBASE_* values
 
 # PostgreSQL, published on 127.0.0.1:5432 for the host to reach.
 # The dev file is what publishes that port; it is never loaded implicitly.
@@ -25,8 +25,9 @@ npm run db:deploy      # apply migrations
 npm run dev
 ```
 
-`BETTER_AUTH_SECRET` must be at least 32 characters or the app refuses to
-start — generate one with `openssl rand -base64 32`. See
+Sign-in uses Firebase Auth: create the project as described in
+[DEPLOYMENT.md](./DEPLOYMENT.md#firebase-project), or point
+`FIREBASE_AUTH_EMULATOR_HOST` at a local Auth emulator. See
 [DEPLOYMENT.md](./DEPLOYMENT.md#environment-variables) for every variable.
 
 Without Node.js on the host, prefix npm commands with:
@@ -51,7 +52,7 @@ Short version for the Pi, which only pulls images CI built:
 
 ```sh
 cd deploy
-cp ../.env.example .env    # set POSTGRES_PASSWORD, BETTER_AUTH_SECRET, BETTER_AUTH_URL
+cp ../.env.example .env    # set POSTGRES_PASSWORD, APP_URL and the FIREBASE_* values
 docker compose pull && docker compose up -d
 ```
 

@@ -26,19 +26,17 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # Build-stage placeholders only.
 #
-# `prisma generate` never connects, and `next build` only evaluates module
-# scope while collecting page data - neither opens a database connection or
-# signs a cookie. But both read these variables, so they must be set. The real
-# values are injected at run time; these never reach the `runner` image, which
-# copies files out of this stage rather than starting from it.
-#
-# The secret placeholder is padded past the 32-character minimum that
-# src/env.ts enforces. It signs nothing: no cookie is issued during a build.
+# `prisma generate` never connects, and `next build` renders the few
+# prerendered pages (the not-found page) through the root layout, which reads
+# the public Firebase web config. Nothing here opens a database connection,
+# talks to Firebase or issues a cookie. The real values are injected at run
+# time; these never reach the `runner` image, which copies files out of this
+# stage rather than starting from it. No secret is needed to build.
 ENV DATABASE_URL="postgresql://placeholder:placeholder@127.0.0.1:5432/placeholder"
-ENV BETTER_AUTH_SECRET="build-stage-placeholder-not-a-real-secret"
-# next build runs with NODE_ENV=production, where src/env.ts requires this
-# rather than defaulting to localhost. The real LAN origin is set at run time.
-ENV BETTER_AUTH_URL="http://placeholder.invalid"
+ENV APP_URL="http://placeholder.invalid"
+ENV FIREBASE_API_KEY="build-placeholder"
+ENV FIREBASE_AUTH_DOMAIN="placeholder.invalid"
+ENV FIREBASE_PROJECT_ID="build-placeholder"
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npx prisma generate
@@ -101,8 +99,8 @@ COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
 EXPOSE 3000
-# No curl or wget in the image: Node's own fetch. /login renders without a
-# session, so a 200 means the server is up and rendering.
+# No curl or wget in the image: Node's own fetch. /api/health answers 200 only
+# when the server is up and the database answers a query.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD ["node", "-e", "fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+  CMD ["node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
 CMD ["node", "server.js"]

@@ -3,8 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LogOutIcon } from "lucide-react";
+import { signOutAction } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
-import { signOut } from "@/lib/auth-client";
 import { useTranslations } from "@/lib/i18n/context";
 
 /**
@@ -21,7 +21,7 @@ export function SignOutButton() {
 
   async function handleSignOut() {
     setPending(true);
-    await signOut();
+    await signOutAction();
     // Replace so the signed-in page is not reachable with the back button.
     router.replace("/login");
     router.refresh();

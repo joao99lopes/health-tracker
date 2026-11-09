@@ -1,6 +1,5 @@
-import { getSessionCookie } from "better-auth/cookies";
 import { NextResponse, type NextRequest } from "next/server";
-
+import { SESSION_COOKIE } from "@/lib/auth/rules";
 import { proxyRedirect } from "@/lib/auth/routing";
 
 /**
@@ -15,7 +14,7 @@ import { proxyRedirect } from "@/lib/auth/routing";
 export function proxy(request: NextRequest) {
   const target = proxyRedirect(
     request.nextUrl.pathname,
-    getSessionCookie(request) !== null,
+    request.cookies.has(SESSION_COOKIE),
   );
   if (target === null) {
     return NextResponse.next();
@@ -27,6 +26,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except the auth endpoints, Next internals and static files.
-  matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico).*)"],
+  // Everything except the public health probe, Next internals and static
+  // files.
+  matcher: ["/((?!api/health|_next/static|_next/image|favicon.ico).*)"],
 };

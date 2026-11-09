@@ -14,7 +14,11 @@
  */
 
 /** Pages a signed-out visitor may open. */
-export const AUTH_PAGES: readonly string[] = ["/login", "/register"];
+export const AUTH_PAGES: readonly string[] = [
+  "/login",
+  "/register",
+  "/forgot-password",
+];
 
 export function isAuthPage(pathname: string): boolean {
   return AUTH_PAGES.includes(pathname);

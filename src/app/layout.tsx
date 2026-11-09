@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { env } from "@/env";
+import { FirebaseProvider } from "@/lib/firebase/client";
 import { I18nProvider } from "@/lib/i18n/context";
 import { resolveLanguage } from "@/lib/i18n/server";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme/theme";
@@ -47,7 +49,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         {/* First thing in the document: the theme is applied before the page
             is painted, so a dark-theme reader never sees a white flash. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
-        <I18nProvider language={language}>{children}</I18nProvider>
+        <I18nProvider language={language}>
+          {/* Read per request, not baked into the build: one image serves
+              any Firebase project. Public values only. */}
+          <FirebaseProvider config={env.FIREBASE_WEB_CONFIG}>
+            {children}
+          </FirebaseProvider>
+        </I18nProvider>
       </body>
     </html>
   );

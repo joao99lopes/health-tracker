@@ -1,11 +1,18 @@
 "use client";
 
 import { CredentialForm } from "@/components/auth/credential-form";
-import { signUp } from "@/lib/auth-client";
+import { toCredentialOutcome } from "@/components/auth/outcome";
+import { useBrowserAuth } from "@/lib/firebase/client";
 import { useTranslations } from "@/lib/i18n/context";
 
+/**
+ * Registration. The account exists in Firebase straight away, but no session
+ * is created until the address is confirmed: signing in before then offers to
+ * send the confirmation email again.
+ */
 export default function RegisterPage() {
   const t = useTranslations();
+  const auth = useBrowserAuth();
 
   return (
     <CredentialForm
@@ -13,23 +20,14 @@ export default function RegisterPage() {
       description={t.auth.register.description}
       submitLabel={t.auth.register.submit}
       passwordAutoComplete="new-password"
-      onSubmit={async ({ email, password }) => {
-        const { error } = await signUp.email({
-          email,
-          password,
-          // better-auth requires a name; the product's optional display name
-          // lives on the profile.
-          name: "",
-        });
-        if (!error) {
-          return {};
-        }
-        // better-auth reports a duplicate address as a 422 with this code.
-        if (error.code === "USER_ALREADY_EXISTS") {
-          return { error: t.auth.register.duplicate };
-        }
-        return { error: t.auth.register.failed };
-      }}
+      newPassword
+      onSubmit={async ({ email, password }) =>
+        toCredentialOutcome(
+          t,
+          await auth.register(email, password),
+          t.auth.register.verificationSent(email),
+        )
+      }
       alternate={{
         prompt: t.auth.register.alternatePrompt,
         href: "/login",

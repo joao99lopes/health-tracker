@@ -61,3 +61,22 @@ test("validateCredentials reports both problems at once", () => {
     "PASSWORD_TOO_SHORT",
   ]);
 });
+
+test("signing in checks only that a password is present", () => {
+  assert.deepEqual(
+    validateCredentials({ email: "a@example.com", password: "short" }, { passwordRules: false }),
+    [],
+  );
+  assert.deepEqual(
+    validateCredentials({ email: "", password: "" }, { passwordRules: false }),
+    ["EMAIL_REQUIRED", "PASSWORD_REQUIRED"],
+  );
+});
+
+test("a new password must meet the length rules", () => {
+  assert.deepEqual(
+    validateCredentials({ email: "a@example.com", password: "short" }),
+    ["PASSWORD_TOO_SHORT"],
+  );
+  assert.deepEqual(validateCredentials({ email: "a@example.com", password: validPassword }), []);
+});
