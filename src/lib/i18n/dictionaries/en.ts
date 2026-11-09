@@ -20,6 +20,8 @@ export const en = {
     deleting: "Deleting…",
     back: "Back",
     notRecorded: "Not recorded",
+    version: (version: string) => `Version ${version}`,
+    versionUnknown: "development build",
   },
 
   nav: {

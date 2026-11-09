@@ -4,6 +4,8 @@ import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth/session";
 import { getTranslations } from "@/lib/i18n/server";
 import { getProfile } from "@/lib/profile/queries";
+import { displayVersion } from "@/lib/version";
+import { env } from "@/env";
 
 export default async function ProfilePage() {
   // Authoritative check, and the only id the query below is scoped by.
@@ -20,6 +22,11 @@ export default async function ProfilePage() {
       <ProfileForm profile={profile} fallbackLanguage={language} />
 
       <DataSection profileHeightCm={profile?.heightCm ?? null} />
+
+      {/* Which build is running - useful after a deploy or a rollback. */}
+      <p className="text-muted-foreground text-center text-xs">
+        {t.common.version(displayVersion(env.APP_VERSION) ?? t.common.versionUnknown)}
+      </p>
     </div>
   );
 }

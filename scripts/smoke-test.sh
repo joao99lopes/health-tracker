@@ -88,4 +88,11 @@ users="$(docker exec "${RUN}-db" psql -U smoke -d smoke -Atc 'select count(*) fr
 [ "$users" = "1" ] || fail "sign-up did not write a user row (found $users)"
 echo "ok   sign-up reaches the database"
 
+# CI bakes the commit SHA in; check it actually reached the running app.
+if [ -n "${EXPECTED_VERSION:-}" ]; then
+  actual="$(docker exec "${RUN}-app" printenv APP_VERSION || true)"
+  [ "$actual" = "$EXPECTED_VERSION" ] || fail "APP_VERSION is '$actual', expected '$EXPECTED_VERSION'"
+  echo "ok   the image carries version $EXPECTED_VERSION"
+fi
+
 echo "PASS"

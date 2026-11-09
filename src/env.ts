@@ -65,4 +65,12 @@ export const env = {
   get NODE_ENV(): string {
     return process.env.NODE_ENV ?? "development";
   },
+  /**
+   * The commit the running image was built from, baked in by CI as a build
+   * argument. Optional and never a secret: absent outside an image (`next
+   * dev`, a local build), where the interface says so.
+   */
+  get APP_VERSION(): string | null {
+    return process.env.APP_VERSION || null;
+  },
 } as const;

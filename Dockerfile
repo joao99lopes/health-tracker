@@ -74,7 +74,12 @@ CMD ["node", "node_modules/prisma/build/index.js", "migrate", "deploy"]
 
 # ---- runtime ----------------------------------------------------------------
 FROM base AS runner
+# The commit this image was built from. CI passes the SHA; a local build
+# leaves it empty and the profile page says "development build".
+ARG APP_VERSION=""
+LABEL org.opencontainers.image.revision="${APP_VERSION}"
 WORKDIR /app
+ENV APP_VERSION="${APP_VERSION}"
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000

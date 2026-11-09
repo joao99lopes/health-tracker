@@ -75,6 +75,9 @@ jobs:
           target: runner
           platforms: linux/arm64
           load: true
+          # Shown on the profile page and set as the OCI revision label.
+          build-args: |
+            APP_VERSION=${{ github.sha }}
           tags: |
             ${{ env.IMAGE }}:latest
             ${{ env.IMAGE }}:${{ github.sha }}
@@ -82,6 +85,8 @@ jobs:
           cache-to: type=gha,mode=max,scope=runner
 
       - name: Smoke test
+        env:
+          EXPECTED_VERSION: ${{ github.sha }}
         run: bash scripts/smoke-test.sh "$IMAGE:${{ github.sha }}" "$IMAGE:migrate-${{ github.sha }}"
 
       - name: Image sizes

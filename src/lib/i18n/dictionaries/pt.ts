@@ -20,6 +20,8 @@ export const pt: Dictionary = {
     deleting: "A eliminar…",
     back: "Voltar",
     notRecorded: "Não registado",
+    version: (version: string) => `Versão ${version}`,
+    versionUnknown: "build de desenvolvimento",
   },
 
   nav: {
