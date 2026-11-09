@@ -47,16 +47,18 @@ Development and Raspberry Pi production workflows, environment variables,
 migrations and troubleshooting are all in
 **[DEPLOYMENT.md](./DEPLOYMENT.md)**.
 
-Short version for the Pi:
+Short version for the Pi, which only pulls images CI built:
 
 ```sh
-cp .env.example .env    # set POSTGRES_PASSWORD, BETTER_AUTH_SECRET, BETTER_AUTH_URL
-docker compose up -d --build
+cd deploy
+cp ../.env.example .env    # set POSTGRES_PASSWORD, BETTER_AUTH_SECRET, BETTER_AUTH_URL
+docker compose pull && docker compose up -d
 ```
 
-`docker-compose.yml` alone is the production stack: PostgreSQL on a persistent
+`deploy/compose.yaml` is the production stack: PostgreSQL on a persistent
 `db_data` volume with no published port, migrations applied automatically, and
-port 3000 as the only thing reachable from the LAN.
+port 3000 as the only thing reachable from the LAN. Backups and health checks
+for it live in `deploy/ops/`.
 
 ## Scripts
 

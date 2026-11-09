@@ -1,8 +1,9 @@
-# Production stack. This file alone is what runs on the Raspberry Pi.
+# The production stack, built from source - for development machines.
 #
-# Build it on the machine that runs it: the node and postgres images are
-# published for linux/amd64 and linux/arm64, so a `docker compose build` on the
-# Pi produces a native arm64 image with no emulation.
+# The Raspberry Pi does NOT use this file: it runs deploy/compose.yaml, which
+# pulls the images CI built. Do not run `docker compose up` here on the Pi -
+# the project name is the same and this would replace production with a local
+# build. See DEPLOYMENT.md.
 #
 # Nothing here publishes a database port. Development needs one, so it lives in
 # docker-compose.dev.yml and is opted into explicitly:

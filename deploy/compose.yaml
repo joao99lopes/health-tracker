@@ -1,0 +1,66 @@
+# health-tracker on the Raspberry Pi: runs images built by GitHub Actions
+# (.github/workflows/docker-arm64.yml) and pulled from GHCR. Nothing is
+# compiled on the Pi. See DEPLOYMENT.md.
+#
+#   cd deploy && docker compose pull && docker compose up -d
+#
+# The project name is fixed so the stack keeps using the existing volume
+# `health-tracker_db_data`, whichever folder this file is run from.
+# Secrets come from `.env` next to this file (mode 600, never committed);
+# see .env.example at the repository root.
+name: health-tracker
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-health}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-health_tracker}
+    # Sized for a 384 MB container on a 2 GB Pi: the app's pool opens at most
+    # 5 connections; the rest is headroom for migrate, backups and psql.
+    command: ["postgres", "-c", "shared_buffers=64MB", "-c", "max_connections=20"]
+    # No `ports`: only `app` and `migrate` reach PostgreSQL, by service name.
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-health} -d ${POSTGRES_DB:-health_tracker}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 384m
+
+  # One-shot: applies pending migrations, then exits. CI pushes `:migrate`
+  # before `:latest`, so a pulled app never runs ahead of its schema.
+  migrate:
+    image: ghcr.io/joao99lopes/health-tracker:migrate
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-health}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-health_tracker}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    image: ghcr.io/joao99lopes/health-tracker:latest
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-health}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-health_tracker}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env}
+      # The LAN origin users type, e.g. http://192.168.1.170:3000.
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?set BETTER_AUTH_URL in .env}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    # The only published port. LAN only.
+    ports:
+      - "3000:3000"
+    # The image defines its own HEALTHCHECK (GET /login) and caps the Node
+    # heap at 320 MB to stay inside this limit.
+    mem_limit: 512m
+
+volumes:
+  db_data:

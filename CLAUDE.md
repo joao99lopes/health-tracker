@@ -177,10 +177,15 @@ PostgreSQL 17 with the named volume `db_data`, published on
 `.env.example`).
 
 The port is published by `docker-compose.dev.yml`, never by the base file:
-`docker-compose.yml` alone is the production stack and gives PostgreSQL no
-published port at all. The dev file is deliberately not named
-`docker-compose.override.yml`, which Compose would load implicitly — including
-on the Raspberry Pi.
+`docker-compose.yml` alone gives PostgreSQL no published port at all. The dev
+file is deliberately not named `docker-compose.override.yml`, which Compose
+would load implicitly.
+
+The Raspberry Pi runs **`deploy/compose.yaml`** - GHCR images only, never a
+build - with its per-service operations in `deploy/ops/` (backup,
+healthcheck, restore test). The root `docker-compose.yml` builds the same
+stack from source for development machines and must never be run on the Pi
+(same project name). See DEPLOYMENT.md.
 
 Prisma is pinned to **7.10.1**. Do not run a bare `npm install prisma` - the
 registry's `latest` tag currently points at an 8.0 release candidate.
@@ -230,8 +235,8 @@ missing. Read configuration from there, not from `process.env`.
 ### Docker
 
 `Dockerfile` is a multi-stage build producing a standalone Next.js server.
-`docker compose up -d --build` runs the whole stack; only `app` publishes a
-LAN-reachable port.
+Locally, `docker compose up -d --build` builds and runs the whole stack; only
+`app` publishes a port.
 
 Base image is `node:22-alpine`. Two targets matter: `runner` (the app,
 GHCR `:latest` / `:<sha>`) and `builder` (the migration job, GHCR

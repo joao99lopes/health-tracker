@@ -5,16 +5,22 @@ Two environments, one repository:
 |              | Development                       | Production                     |
 | ------------ | --------------------------------- | ------------------------------ |
 | Machine      | Windows + Docker Desktop          | Raspberry Pi 4, 64-bit (ARM64) |
-| App runs     | `npm run dev` on the host         | `app` container                |
+| App runs     | `npm run dev` on the host         | `app` container, image from GHCR |
+| Images built | locally, when needed              | GitHub Actions, native arm64 runner |
 | PostgreSQL   | `db` container, loopback port     | `db` container, no port        |
-| Compose files| `docker-compose.yml` + `.dev.yml` | `docker-compose.yml` alone     |
-| Access       | `http://localhost:3000`           | LAN, e.g. `http://192.168.1.50:3000` |
+| Compose files| `docker-compose.yml` + `.dev.yml` | `deploy/compose.yaml`          |
+| Access       | `http://localhost:3000`           | LAN, e.g. `http://192.168.1.170:3000` |
 
-`docker-compose.yml` **is** the production stack. Development adds
-`docker-compose.dev.yml` on top, which does one thing: publish the database port
-so host tooling can reach it. That file is deliberately not named
-`docker-compose.override.yml`, which Compose would load implicitly — including
-on the Pi.
+Three compose files, three jobs:
+
+- **`deploy/compose.yaml`** is production: it only pulls and runs the images
+  CI published. Nothing is ever compiled on the Pi.
+- **`docker-compose.yml`** builds the same stack from source, for trying the
+  production images on a development machine.
+- **`docker-compose.dev.yml`** is layered on top of it in development and does
+  one thing: publish the database port so host tooling can reach it. It is
+  deliberately not named `docker-compose.override.yml`, which Compose would
+  load implicitly.
 
 Cloudflare Tunnel is not configured. Production is LAN-only for now.
 
@@ -42,10 +48,16 @@ Cloudflare Tunnel is not configured. Production is LAN-only for now.
 
 - A static or DHCP-reserved LAN IP. It goes into `BETTER_AUTH_URL`, and
   sign-in breaks if it changes.
-- Roughly 2 GB free disk for images and the build.
+- Roughly 1 GB free disk for the images (app ≈ 280 MB, migrate ≈ 610 MB,
+  postgres ≈ 400 MB as Docker reports them on the Pi).
+- Optional, for off-site backups: `rclone` with an encrypted remote (see
+  [Backups and monitoring](#backups-and-monitoring)).
 
-Build on the Pi itself. The base images are multi-arch, so it builds natively —
-no emulation, no cross-compilation, no Prisma `binaryTargets` juggling.
+The Pi never builds. Every push to `main` runs
+`.github/workflows/docker-arm64.yml`: lint, unit tests, both images built on a
+native arm64 runner, an end-to-end smoke test (`scripts/smoke-test.sh`), and
+only then a push to GHCR — `:migrate` first, then `:latest`, each also tagged
+with the commit SHA.
 
 ---
 
@@ -131,38 +143,50 @@ into `.next/types/`, so a standalone `tsc` on a clean tree reports them missing.
 
 ## First deployment (Raspberry Pi)
 
+The repository is cloned on the Pi only for `deploy/` — the compose file and
+the ops scripts. Its source is never built there.
+
 ```sh
-git clone <your-repo-url> health-tracker
-cd health-tracker
-cp .env.example .env
+git clone <your-repo-url> ~/health-tracker
+cd ~/health-tracker/deploy
+cp ../.env.example .env && chmod 600 .env
 ```
 
-Edit `.env`:
+Edit `deploy/.env`:
 
 ```sh
 POSTGRES_PASSWORD=<a real password>
 BETTER_AUTH_SECRET=<openssl rand -base64 32>
-BETTER_AUTH_URL=http://192.168.1.50:3000    # this Pi's LAN address
+BETTER_AUTH_URL=http://192.168.1.170:3000    # this Pi's LAN address
 ```
 
-Bring the whole stack up:
+Pull and start:
 
 ```sh
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
-The first build takes several minutes on a Pi 4. Compose then starts things in
-order: `db` → wait for healthy → `migrate` (applies migrations, exits) → `app`.
+Compose starts things in order: `db` → wait for healthy → `migrate` (applies
+migrations, exits) → `app`. If `pull` answers "denied", the GHCR package is
+private: make it public under GitHub → Packages → health-tracker → Package
+settings, or `docker login ghcr.io` on the Pi with a read-only token.
 
 Verify:
 
 ```sh
-docker compose ps           # db and app up; migrate exited 0
-curl -I http://localhost:3000
+docker compose ps           # db and app healthy; migrate exited 0
+curl -I http://localhost:3000/login
 ```
 
-Then open `http://192.168.1.50:3000` from another device on the LAN and
-register an account.
+Then open `http://192.168.1.170:3000` from another device on the LAN and
+register an account. The profile page shows the running version (the commit's
+short SHA); `docker inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' ghcr.io/joao99lopes/health-tracker:latest`
+shows the same from the shell.
+
+> Never run `docker compose up` in the repository root on the Pi. That file
+> builds from source and has the same project name, so it would replace the
+> production containers with a local build.
 
 > Registration is open to anyone who can reach the port. That is intended for a
 > 1–2 user LAN app — just be aware of it before exposing the port more widely.
@@ -176,8 +200,9 @@ one-shot `migrate` service. `app` waits for it to complete successfully before
 starting, so the app never runs against an un-migrated schema.
 
 There is no Prisma CLI in the runtime image — it pulls in `effect`, `mysql2`
-and more, which have no business in production. The `migrate` service uses the
-builder stage, where the CLI already lives.
+and more, which have no business in production. The `migrate` service runs the
+`:migrate` image (the Dockerfile's `builder` target), which holds the CLI, the
+schema and the migrations and nothing else.
 
 | Task | Where | Command |
 | ---- | ----- | ------- |
@@ -192,6 +217,8 @@ at build time.
 ---
 
 ## Starting and stopping the stack
+
+On the Pi, from `~/health-tracker/deploy`:
 
 ```sh
 docker compose up -d          # start (and apply migrations)
@@ -215,14 +242,64 @@ reboot or a crash.
 
 ## Updating the application
 
+1. Push to `main` and wait for the **Build arm64 images** workflow to pass.
+2. On the Pi:
+
+   ```sh
+   cd ~/health-tracker && git pull     # only if deploy/ changed
+   cd deploy
+   docker compose pull
+   docker compose up -d
+   docker image prune -f               # drop the superseded images
+   ```
+
+`up -d` re-runs `migrate` before restarting `app`. Check the profile page shows
+the new short SHA.
+
+**Rolling back.** Every image is also tagged with its commit SHA. Pin both
+images in `deploy/compose.yaml` to the previous one —
+`:<sha>` for `app`, `:migrate-<sha>` for `migrate` — and `docker compose up -d`.
+A rollback across a migration that changed the schema needs a database restore
+as well (see below); migrations only move forward.
+
+---
+
+## Backups and monitoring
+
+`deploy/ops/` holds the operations for **this service only**; each service on
+the Pi keeps its own, with its own healthchecks.io checks. Host-level checks
+(disk, temperature, other services) do not belong here.
+
+| Script | Schedule | Does |
+| ------ | -------- | ---- |
+| `backup.sh` | daily, `30 3 * * *` | `pg_dump` + this service's `.env` to `~/backups/health-tracker/AAAA-MM-DD` (7 days), and to `gdrive-crypt:impiza/health-tracker` (30 days) when that rclone remote exists |
+| `healthcheck.sh` | every 5 min | `db` and `app` healthy, last `migrate` exited 0, `GET /login` is 200; silent on success |
+| `restore-test.sh` | by hand, monthly | restores the newest dump into a throwaway PostgreSQL and counts users, profiles, measurements and migrations |
+
+Set up:
+
 ```sh
-cd health-tracker
-git pull
-docker compose up -d --build
+cd ~/health-tracker/deploy/ops
+cp monitor.env.example monitor.env && chmod 600 monitor.env   # paste the two healthchecks.io URLs
+crontab -e
+#   30 3 * * *   $HOME/health-tracker/deploy/ops/backup.sh
+#   */5 * * * *  $HOME/health-tracker/deploy/ops/healthcheck.sh
 ```
 
-Rebuilds the image, re-runs migrations, and restarts the app. Old images
-accumulate over time; reclaim space with `docker image prune -f`.
+Logs: `~/backups/health-tracker/backup.log` and `healthcheck.log` (failures
+only).
+
+**Restoring for real** (replaces every row):
+
+```sh
+gunzip -c ~/backups/health-tracker/AAAA-MM-DD/health-tracker-db.sql.gz \
+  | docker compose -f ~/health-tracker/deploy/compose.yaml exec -T db \
+      sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+```
+
+From the off-site copy: `rclone copy gdrive-crypt:impiza/health-tracker/AAAA-MM-DD ~/restore/`
+first. Without the rclone crypt passwords the off-site copies cannot be read —
+keep them in a password manager.
 
 ---
 
@@ -279,7 +356,15 @@ the published port in `docker-compose.yml`, remembering to update
 `BETTER_AUTH_URL` to match.
 
 **Out of disk on the Pi.**
-`docker image prune -f` reclaims superseded build layers.
+`docker image prune -f` reclaims superseded images after an update.
+
+**`docker compose pull` says "denied" or "unauthorized".**
+The GHCR package is private. Make it public, or `docker login ghcr.io` on the
+Pi with a token that only has `read:packages`.
+
+**The profile page still shows the old version after an update.**
+The pull found nothing new (the workflow has not finished, or failed), or
+`up -d` was not run after `pull`.
 
 ---
 
