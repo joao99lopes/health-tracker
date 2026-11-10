@@ -72,7 +72,7 @@ export function MobileNav() {
   return (
     <nav
       aria-label={t.nav.primary}
-      className="bg-background/95 border-border pb-safe fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur sm:hidden"
+      className="bg-background/95 border-border pb-safe fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur sm:hidden print:hidden"
     >
       <ul className="grid grid-cols-3">
         {navItems(t).map((item) => {

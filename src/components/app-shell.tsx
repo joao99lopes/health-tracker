@@ -32,7 +32,7 @@ export async function AppShell({
       >
         {t.nav.skipToContent}
       </a>
-      <header className="bg-background/85 border-border sticky top-0 z-30 border-b backdrop-blur">
+      <header className="bg-background/85 border-border sticky top-0 z-30 border-b backdrop-blur print:hidden">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-2 px-4 sm:h-16 sm:gap-4 sm:px-6">
           <span className="flex items-center gap-2">
             <span
@@ -66,7 +66,7 @@ export async function AppShell({
         // Focusable only by the skip link, so focus really moves past the
         // header instead of staying on it.
         tabIndex={-1}
-        className="outline-none mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-28 sm:px-6 sm:pt-10 sm:pb-16">
+        className="outline-none mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-28 sm:px-6 sm:pt-10 sm:pb-16 print:max-w-none print:p-0">
         {children}
       </main>
 

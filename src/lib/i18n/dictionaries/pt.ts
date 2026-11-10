@@ -408,4 +408,30 @@ export const pt: Dictionary = {
       NO_VALUES: "Introduza pelo menos um valor de medição.",
     },
   },
+
+  report: {
+    title: "Resumo de medições",
+    open: "Resumo imprimível",
+    description:
+      "Tudo o que foi registado num período, numa página para imprimir ou guardar em PDF. Só números, sem interpretação.",
+    print: "Imprimir",
+    printHint: "Para guardar em PDF, escolha “Guardar como PDF” como impressora.",
+    generatedOn: "Gerado a",
+    range: "Leituras",
+    byMetric: "Por métrica",
+    measurements: "Medições",
+    columns: {
+      metric: "Métrica",
+      readings: "Leituras",
+      first: "Primeira",
+      last: "Última",
+      change: "Variação",
+      min: "Mínimo",
+      max: "Máximo",
+      mean: "Média",
+      trend: "Tendência / semana",
+    },
+    footnote:
+      "Variação: última leitura menos a primeira, no período. Tendência: declive de uma reta ajustada às leituras do período. O IMC e a relação cintura-altura são calculados com a altura registada em cada medição.",
+  },
 };

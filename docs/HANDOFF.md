@@ -23,6 +23,7 @@ deliberately gives no advice (see "Explicitly out of scope" in `CLAUDE.md`).
 | ----- | ------------ |
 | `/` Dashboard | Latest measurement, current value per metric (with change vs. that metric's previous reading), evolution chart, three comparisons (latest vs previous / vs first / over a period). |
 | `/measurements` | Table of all measurements; `/new`, `/[id]`, `/[id]/edit`. Optional free-text **note** per measurement. |
+| `/report?period=` | Printable summary of a period: per-metric figures, one chart, every measurement. Opened from the measurement list. |
 | `/profile` | Profile (birth date, sex, height, language, direction preferences), **Your data** (CSV/JSON export, CSV import), **Account** (change password, delete account), running version. |
 | `/login`, `/register`, `/forgot-password`, `/login/email-link` | Firebase Auth: email + password (verification required), Google, one-time email link. |
 | `/api/export?format=csv\|json` | The signed-in user's data as a file. |

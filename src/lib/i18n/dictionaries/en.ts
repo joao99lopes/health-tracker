@@ -422,4 +422,32 @@ export const en = {
       NO_VALUES: "Enter at least one measurement value.",
     },
   },
+
+  report: {
+    title: "Measurement summary",
+    open: "Printable summary",
+    description:
+      "Everything recorded in a period, on one page to print or save as PDF. Figures only - no interpretation.",
+    print: "Print",
+    printHint: "To save a PDF, choose “Save as PDF” as the printer.",
+    /** Followed by the date and time, written by the browser. */
+    generatedOn: "Generated on",
+    /** Followed by the first and last reading date. */
+    range: "Readings",
+    byMetric: "By metric",
+    measurements: "Measurements",
+    columns: {
+      metric: "Metric",
+      readings: "Readings",
+      first: "First",
+      last: "Last",
+      change: "Change",
+      min: "Lowest",
+      max: "Highest",
+      mean: "Mean",
+      trend: "Trend / week",
+    },
+    footnote:
+      "Change: last reading minus first, in the period. Trend: slope of a straight line through the period's readings. BMI and waist-to-height ratio are derived from the height recorded with each measurement.",
+  },
 };

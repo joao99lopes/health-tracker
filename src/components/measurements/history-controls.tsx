@@ -1,6 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { PrinterIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -53,6 +56,13 @@ export function HistoryControls({ query }: { query: HistoryQuery }) {
           ))}
         </SelectContent>
       </Select>
+      <Button asChild variant="outline" className="ml-auto">
+        {/* The report opens on the period the list is showing. */}
+        <Link href={`/report?period=${query.period}`}>
+          <PrinterIcon />
+          {t.report.open}
+        </Link>
+      </Button>
     </div>
   );
 }
