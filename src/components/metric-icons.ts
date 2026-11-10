@@ -29,3 +29,21 @@ export const METRIC_ICONS: Record<Metric, LucideIcon> = {
   bmi: CalculatorIcon,
   waistToHeightRatio: RulerDimensionLineIcon,
 };
+
+/**
+ * The hue each metric's icon is tinted with, from the `--metric-*` tokens.
+ *
+ * Recognition only, like the icon itself: never the sole carrier of meaning,
+ * and unrelated to whether a value is high or low.
+ */
+export const METRIC_COLORS: Record<Metric, string> = {
+  weightKg: "var(--metric-weight)",
+  bodyFatPercent: "var(--metric-body-fat)",
+  hydrationPercent: "var(--metric-hydration)",
+  musclePercent: "var(--metric-muscle)",
+  boneMassKg: "var(--metric-bone)",
+  visceralFat: "var(--metric-visceral)",
+  abdominalCircumferenceCm: "var(--metric-abdominal)",
+  bmi: "var(--metric-bmi)",
+  waistToHeightRatio: "var(--metric-waist-height)",
+};

@@ -23,7 +23,7 @@ export function AddMeasurementFab() {
       size="icon-lg"
       // Clear of the bottom navigation on a phone, and of the viewport's own
       // safe area below it.
-      className="shadow-raised fixed right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] z-40 size-14 rounded-full sm:right-8 sm:bottom-8 print:hidden"
+      className="shadow-accent fixed right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] z-40 size-14 rounded-2xl sm:right-8 sm:bottom-8 print:hidden"
     >
       <Link href={NEW_MEASUREMENT_HREF} aria-label={t.measurements.add}>
         <PlusIcon className="size-6" />

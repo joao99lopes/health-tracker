@@ -48,7 +48,7 @@ import {
   changeTone,
   type DirectionPreferences,
 } from "@/lib/preferences/direction";
-import { METRIC_ICONS } from "@/components/metric-icons";
+import { METRIC_COLORS, METRIC_ICONS } from "@/components/metric-icons";
 import { TONE_TEXT_CLASS } from "@/components/tone";
 import { cn } from "@/lib/utils";
 import {
@@ -102,6 +102,24 @@ const DIRECTION_ICONS = {
   same: MinusIcon,
 } as const;
 
+/** A metric's icon on a tint of its own hue; decoration beside its name. */
+function MetricIconChip({ metric }: { metric: Metric }) {
+  const Icon = METRIC_ICONS[metric];
+  const color = METRIC_COLORS[metric];
+  return (
+    <span
+      className="flex size-6 shrink-0 items-center justify-center rounded-lg"
+      style={{
+        color,
+        backgroundColor: `color-mix(in oklch, ${color} 15%, transparent)`,
+      }}
+      aria-hidden
+    >
+      <Icon className="size-3.5" />
+    </span>
+  );
+}
+
 /**
  * Each metric's change against its own previous reading.
  *
@@ -138,7 +156,6 @@ function MetricCard({
 }) {
   const { t, language } = useI18n();
   const hydrated = useHydrated();
-  const MetricIcon = METRIC_ICONS[reading.metric];
   const DirectionIcon = change === null ? null : DIRECTION_ICONS[change.direction];
   const tone =
     change === null
@@ -163,13 +180,13 @@ function MetricCard({
         aria-label={t.dashboard.showInChart(metricName(t, reading.metric))}
         className="hover:bg-foreground/[0.03] focus-visible:ring-ring/50 absolute inset-0 z-10 rounded-[inherit] outline-none focus-visible:ring-3"
       />
-      <CardContent className="flex flex-col gap-1.5">
-        <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
-          <MetricIcon className="text-primary size-3.5 shrink-0" aria-hidden />
+      <CardContent className="flex flex-col gap-2">
+        <p className="text-muted-foreground flex items-center gap-2 text-xs font-medium">
+          <MetricIconChip metric={reading.metric} />
           {/* The value below carries the unit; the name does not repeat it. */}
           {metricName(t, reading.metric)}
         </p>
-        <p className="text-xl font-semibold tabular-nums sm:text-2xl">
+        <p className="text-xl leading-tight font-semibold tracking-tight tabular-nums sm:text-2xl">
           {formatMetricValue(reading.metric, reading.value, language)}
         </p>
         {category !== null && (
@@ -184,7 +201,7 @@ function MetricCard({
         {change !== null && DirectionIcon !== null && (
           <p
             className={cn(
-              "flex items-center gap-1 text-xs tabular-nums",
+              "bg-muted flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums",
               tone,
             )}
           >
@@ -302,10 +319,21 @@ export function Dashboard({
   return (
     <div className="flex flex-col gap-8">
       {/* The one thing the page is about, given the weight to match. */}
-      <Card className="from-accent/60 to-card bg-gradient-to-br">
-        <CardContent className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
+      <Card className="bg-hero text-hero-foreground relative ring-0">
+        {/* Two quiet rings in the corner: texture, not information. */}
+        <svg
+          viewBox="0 0 220 220"
+          className="pointer-events-none absolute -top-16 -right-14 size-56 opacity-[0.08] sm:-top-20 sm:right-0 sm:size-64"
+          fill="none"
+          stroke="currentColor"
+          aria-hidden
+        >
+          <circle cx="110" cy="110" r="99" strokeWidth="22" />
+          <circle cx="110" cy="110" r="58" strokeWidth="10" />
+        </svg>
+        <CardContent className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
           <div className="flex flex-col gap-1">
-            <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+            <p className="text-hero-muted text-xs font-medium">
               {t.dashboard.latest}
             </p>
             <p className="font-heading text-lg font-semibold">
@@ -314,33 +342,30 @@ export function Dashboard({
             {/* How long ago, at a glance - in the reader's calendar days,
                 which only the browser knows, so it appears after hydration. */}
             {hydrated && (
-              <p className="text-muted-foreground text-sm">
+              <p className="text-hero-muted text-sm">
                 {formatRelativeAge(latest.measuredAt, now, language)}
               </p>
             )}
           </div>
 
           {bmi !== null && (
-            <div className="relative flex flex-col gap-1 sm:items-end">
+            <div className="relative flex flex-col gap-1.5 sm:items-end">
               <button
                 type="button"
                 onClick={() => showInChart("bmi")}
                 aria-pressed={view.metric === "bmi"}
                 aria-label={t.dashboard.showInChart(t.measurements.bmi)}
-                className="hover:bg-foreground/[0.03] focus-visible:ring-ring/50 absolute -inset-2 z-10 rounded-xl outline-none focus-visible:ring-3"
+                className="focus-visible:ring-hero-foreground/60 absolute -inset-2 z-10 rounded-xl outline-none hover:bg-white/5 focus-visible:ring-3"
               />
-              <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium tracking-wide uppercase">
-                <BmiIcon
-                  className="text-primary size-3.5 shrink-0"
-                  aria-hidden
-                />
+              <p className="text-hero-muted flex items-center gap-1.5 text-xs font-medium">
+                <BmiIcon className="size-3.5 shrink-0" aria-hidden />
                 {t.measurements.bmi}
               </p>
-              <p className="text-4xl leading-none font-semibold tabular-nums sm:text-5xl">
+              <p className="text-5xl leading-none font-bold tracking-tighter tabular-nums sm:text-6xl">
                 {formatMetricValue("bmi", bmi.value, language)}
               </p>
               {category !== null && (
-                <p className="bg-card/70 text-foreground ring-foreground/10 mt-1 w-fit rounded-full px-2.5 py-0.5 text-xs font-medium ring-1">
+                <p className="mt-1 w-fit rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold">
                   {t.measurements.bmiCategories[category]}
                 </p>
               )}
@@ -351,7 +376,7 @@ export function Dashboard({
 
       {values.length > 0 && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+          <h2 className="text-[0.9375rem] font-semibold">
             {t.dashboard.latestValues}
           </h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">

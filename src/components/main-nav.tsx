@@ -84,13 +84,20 @@ export function MobileNav() {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "focus-visible:ring-ring/50 flex flex-col items-center gap-1 px-2 pt-2.5 pb-2 text-[0.6875rem] font-medium transition-colors outline-none -outline-offset-2 focus-visible:ring-3",
+                  "focus-visible:ring-ring/50 flex flex-col items-center gap-1 px-2 pt-2 pb-2 text-[0.6875rem] font-medium transition-colors outline-none -outline-offset-2 focus-visible:ring-3",
                   active
                     ? "text-primary"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <Icon className="size-5" aria-hidden />
+                <span
+                  className={cn(
+                    "flex rounded-full px-4 py-0.5 transition-colors",
+                    active && "bg-accent text-accent-foreground",
+                  )}
+                >
+                  <Icon className="size-5" aria-hidden />
+                </span>
                 {item.label}
               </Link>
             </li>
