@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { LineChartIcon } from "lucide-react";
 import { MetricChart } from "@/components/charts/metric-chart";
+import { PeriodSummary } from "@/components/charts/period-summary";
 import { EmptyState } from "@/components/empty-state";
 import { SectionHeader } from "@/components/page-header";
 import { LocalDateTime } from "@/components/measurements/local-date-time";
@@ -16,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { DashboardView } from "@/lib/dashboard/view";
+import { summarizeSeries } from "@/lib/measurements/stats";
 import { useI18n } from "@/lib/i18n/context";
 import { formatMetricValue } from "@/lib/measurements/format";
 import { metricLabel } from "@/lib/measurements/messages";
@@ -126,6 +128,7 @@ export function EvolutionSection({
           },
     [measurements, series, averageWindow],
   );
+  const summary = useMemo(() => summarizeSeries(series.points), [series]);
   const secondary = useMemo(
     () =>
       secondaryMetric === null
@@ -298,6 +301,11 @@ export function EvolutionSection({
                 <p className="text-muted-foreground text-xs">
                   {t.charts.singlePoint}
                 </p>
+              )}
+              {/* Two readings at least: one reading has no range or mean
+                  worth stating apart from itself. */}
+              {summary !== null && hasEnoughPoints(series) && (
+                <PeriodSummary metric={metric} summary={summary} />
               )}
             </>
           ) : (

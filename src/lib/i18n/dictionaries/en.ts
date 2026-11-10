@@ -104,6 +104,17 @@ export const en = {
     compareNone: "None",
     compareNoData: (metric: string) =>
       `${metric} has no recorded value in this period.`,
+    summary: {
+      title: "In this period",
+      count: "Readings",
+      min: "Lowest",
+      max: "Highest",
+      mean: "Mean",
+      trend: "Trend",
+      perWeek: (change: string) => `${change} / week`,
+      trendHint:
+        "Trend: the slope of a straight line through the readings of this period. It describes the past, not what comes next.",
+    },
   },
 
   auth: {

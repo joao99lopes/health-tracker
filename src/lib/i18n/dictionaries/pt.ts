@@ -104,6 +104,17 @@ export const pt: Dictionary = {
     compareNone: "Nenhuma",
     compareNoData: (metric: string) =>
       `${metric} não tem valores registados neste período.`,
+    summary: {
+      title: "Neste período",
+      count: "Leituras",
+      min: "Mínimo",
+      max: "Máximo",
+      mean: "Média",
+      trend: "Tendência",
+      perWeek: (change: string) => `${change} / semana`,
+      trendHint:
+        "Tendência: o declive de uma reta ajustada às leituras deste período. Descreve o passado, não o que vem a seguir.",
+    },
   },
 
   auth: {
