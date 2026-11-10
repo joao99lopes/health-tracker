@@ -8,7 +8,8 @@ architecture) and [`DEPLOYMENT.md`](../DEPLOYMENT.md) (operations). Read those
 before changing anything.
 
 > This repository is **public**. Never commit secrets, user email addresses,
-> healthchecks.io ping URLs or anything from a `.env`.
+> healthchecks.io ping URLs, anything from a `.env`, or details of the home
+> network (addresses, hostnames, other services on the Pi).
 
 ---
 
@@ -63,13 +64,13 @@ checked with a browser end-to-end suite (§5) that is *not* in the repository.
 
 | Thing | Where |
 | ----- | ----- |
-| Host | Raspberry Pi 4, 2 GB, Debian 13 arm64, LAN `192.168.1.170` / `impiza.local`, port 3000 |
+| Host | Raspberry Pi 4, 2 GB, Debian 13 arm64, on the home LAN, port 3000 (its address is `APP_URL` in the Pi's `.env`) |
 | Stack | `~/health-tracker/deploy/compose.yaml` — GHCR images only; app 512 MB, PostgreSQL 17 384 MB (`shared_buffers=64MB`, `max_connections=20`) |
 | Secrets | `~/health-tracker/.env` (mode 600); `deploy/.env` is a symlink to it |
 | Images | Built by `.github/workflows/docker-arm64.yml` on every push to `main`: lint → tests → arm64 build → smoke test → push `:migrate` then `:latest` (+ SHA tags) |
 | Update | push to `main`, wait for green CI, then on the Pi: `cd ~/health-tracker && git pull && cd deploy && docker compose pull && docker compose up -d` |
 | Ops (this service only) | `deploy/ops/`: `backup.sh` 03:35 daily (local 7 d + encrypted rclone remote 30 d), `healthcheck.sh` every 5 min, `restore-test.sh`; alerts via `deploy/ops/monitor.env` (healthchecks.io) |
-| Host-level ops | `~/ops/` on the Pi (Pi-hole, pokedex, disk, temperature, cloudflared) — not in this repo |
+| Host-level ops | `~/ops/` on the Pi (host-wide monitoring and other services) — not in this repo |
 
 The Pi runs `d42e26e` (check with `docker compose exec app printenv
 APP_VERSION`, or the Profile page footer). Both pre-Firebase accounts have been
@@ -78,8 +79,8 @@ migrated and linked; there is nothing pending on the Pi.
 **When updating:** run `docker compose pull` only after CI for the pushed
 commit is green. Pulling while it is still running silently fetches the
 previous `:latest`, and `up -d` then reports success on the old code; this
-happened once. A pre-migration dump is kept at
-`~/backups/pre-firebase-health-tracker-db.sql.gz` until the owner removes it.
+happened once. A pre-migration dump is kept under `~/backups/` on the Pi until
+the owner removes it.
 
 ---
 

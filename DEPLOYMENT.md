@@ -9,7 +9,7 @@ Two environments, one repository:
 | Images built | locally, when needed              | GitHub Actions, native arm64 runner |
 | PostgreSQL   | `db` container, loopback port     | `db` container, no port        |
 | Compose files| `docker-compose.yml` + `.dev.yml` | `deploy/compose.yaml`          |
-| Access       | `http://localhost:3000`           | LAN, e.g. `http://192.168.1.170:3000` |
+| Access       | `http://localhost:3000`           | LAN, e.g. `http://192.168.1.50:3000` |
 
 Three compose files, three jobs:
 
@@ -75,7 +75,7 @@ committed; `.env.example` is committed and must never hold real secrets.
 | `POSTGRES_PASSWORD`     | **yes**    | —                | `db`, `app`        | Compose refuses to start without it. |
 | `POSTGRES_DB`           | no         | `health_tracker` | `db`, `app`        | |
 | `DATABASE_URL`          | dev only   | —                | host `npm` tooling | Points at `localhost:5432`. The containers ignore it — Compose builds its own pointing at the `db` service. |
-| `APP_URL`               | **yes** in production | `http://localhost:3000` in dev | `app` | The origin users actually type, e.g. `http://192.168.1.170:3000`. Decides whether the session cookie is `Secure`. |
+| `APP_URL`               | **yes** in production | `http://localhost:3000` in dev | `app` | The origin users actually type, e.g. `http://192.168.1.50:3000`. Decides whether the session cookie is `Secure`. |
 | `FIREBASE_API_KEY`      | **yes**    | —                | `app`              | Firebase web config. Public by design. |
 | `FIREBASE_AUTH_DOMAIN`  | **yes**    | —                | `app`              | Firebase web config, e.g. `my-project.firebaseapp.com`. |
 | `FIREBASE_PROJECT_ID`   | **yes**    | —                | `app`              | Firebase web config. |
@@ -158,7 +158,7 @@ every environment that points at it; create it once.
    **Email link (passwordless sign-in)**, and **Google**.
 3. **Authentication → Settings → Authorized domains:** add every host the app
    is opened from, exactly as typed in the browser — on the Pi its LAN address
-   (e.g. `192.168.1.170`). Google sign-in and email links are refused from any
+   (e.g. `192.168.1.50`). Google sign-in and email links are refused from any
    other host; `localhost` is there by default.
 4. **Password policy:** leave it unset. Firebase's own minimum is 6, the same
    as `PASSWORD_MIN_LENGTH` in `src/lib/auth/credentials.ts`; raise both
@@ -189,7 +189,7 @@ Edit `deploy/.env`:
 
 ```sh
 POSTGRES_PASSWORD=<a real password>
-APP_URL=http://192.168.1.170:3000           # this Pi's LAN address
+APP_URL=http://192.168.1.50:3000           # this Pi's LAN address
 FIREBASE_API_KEY=...                        # see "Firebase project" above
 FIREBASE_AUTH_DOMAIN=...
 FIREBASE_PROJECT_ID=...
@@ -216,7 +216,7 @@ docker compose ps           # db and app healthy; migrate exited 0
 curl -I http://localhost:3000/login
 ```
 
-Then open `http://192.168.1.170:3000` from another device on the LAN and
+Then open `http://192.168.1.50:3000` from another device on the LAN and
 register an account. The profile page shows the running version (the commit's
 short SHA); `docker inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' ghcr.io/joao99lopes/health-tracker:latest`
 shows the same from the shell.
@@ -394,7 +394,7 @@ signing in; an existing session keeps working without it.
 **"This address is not allowed to sign in with Google or email links yet".**
 The host in the browser's address bar is not in Firebase → Authentication →
 Settings → *Authorized domains*. Add it exactly as typed (e.g.
-`192.168.1.170`); password sign-in works regardless.
+`192.168.1.50`); password sign-in works regardless.
 
 **"The browser blocked the Google window".**
 Allow pop-ups for the app's address. Google sign-in opens a small window and

@@ -31,7 +31,7 @@ test("a session signed in before sessions were ended is refused", () => {
 });
 
 test("the cookie is httpOnly and lax, Secure only over HTTPS", () => {
-  const lan = sessionCookieOptions("http://192.168.1.170:3000");
+  const lan = sessionCookieOptions("http://192.168.1.50:3000");
   assert.equal(lan.httpOnly, true);
   assert.equal(lan.sameSite, "lax");
   assert.equal(lan.secure, false);

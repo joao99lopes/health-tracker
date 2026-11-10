@@ -48,7 +48,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-health}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-health_tracker}
       # The origin users actually type - on the Pi the LAN address, e.g.
-      # http://192.168.1.170:3000. No default: it decides whether the session
+      # http://192.168.1.50:3000. No default: it decides whether the session
       # cookie is Secure.
       APP_URL: ${APP_URL:?set APP_URL in .env}
       # Firebase Auth. The first three are public (they reach every browser);
