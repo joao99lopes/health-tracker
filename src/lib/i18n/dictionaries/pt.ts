@@ -191,22 +191,22 @@ export const pt: Dictionary = {
     newPassword: "Nova palavra-passe",
     changePasswordSubmit: "Mudar a palavra-passe",
     passwordChanged: "Palavra-passe alterada. Os outros dispositivos terminaram a sessão.",
-    deleteTitle: "Apagar a conta",
+    deleteTitle: "Eliminar a conta",
     deleteDescription:
-      "Apaga para sempre a sua conta, o perfil e todas as medições. Descarregue primeiro os seus dados se os quiser guardar.",
-    deleteButton: "Apagar a conta…",
-    deleteConfirmTitle: "Apagar a sua conta?",
+      "Elimina para sempre a sua conta, o perfil e todas as medições. Descarregue primeiro os seus dados se os quiser guardar.",
+    deleteButton: "Eliminar a conta…",
+    deleteConfirmTitle: "Eliminar a sua conta?",
     deleteConfirmDescription:
-      "Tudo o que registou é apagado e não pode ser recuperado.",
+      "Tudo o que registou é eliminado e não pode ser recuperado.",
     deleteNeedsRecentSignIn:
-      "Por segurança, apagar exige uma sessão iniciada há poucos minutos. Inicie sessão de novo (de qualquer forma), volte aqui e apague.",
+      "Por segurança, eliminar exige uma sessão iniciada há poucos minutos. Inicie sessão de novo (de qualquer forma), volte aqui e elimine.",
     signInAgain: "Iniciar sessão de novo",
     noPassword:
       "Esta conta entra com Google e não tem palavra-passe. Para criar uma, use \"Esqueceu-se da palavra-passe?\" na página de entrada.",
     emailLinkHint:
       "Entra com ligações por email e nunca definiu palavra-passe? Use \"Esqueceu-se da palavra-passe?\" na página de entrada para criar uma.",
-    deleteConfirm: "Apagar tudo",
-    deleting: "A apagar…",
+    deleteConfirm: "Eliminar tudo",
+    deleting: "A eliminar…",
   },
 
   data: {
@@ -256,7 +256,7 @@ export const pt: Dictionary = {
     description:
       "Usado para calcular o IMC e apresentar os seus dados. A altura é guardada em cada medição, por isso alterá-la aqui nunca muda resultados antigos.",
     name: "Nome",
-    namePlaceholder: "Como prefere ser tratado",
+    namePlaceholder: "O nome que prefere usar",
     birthDate: "Data de nascimento",
     birthDateHint: "Guardada como data, não como idade.",
     sex: "Sexo",

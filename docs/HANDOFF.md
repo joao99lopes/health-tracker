@@ -109,6 +109,27 @@ placeholder `FIREBASE_API_KEY` / `FIREBASE_AUTH_DOMAIN`, with
 reset, sign-in links) are listed at
 `http://localhost:9099/emulator/v1/projects/demo-health/oobCodes`.
 
+Three things that recipe does not say, each of which cost time:
+
+- **The CSP is fixed at build time.** `next.config.ts` only adds the emulator
+  to `connect-src` when `FIREBASE_AUTH_EMULATOR_HOST` is set while
+  `next build` runs. An image built by CI (or by the plain `Dockerfile`)
+  therefore refuses to talk to the emulator, and sign-in fails with "Could
+  not reach the sign-in service". For an image, build from a copy of the
+  `Dockerfile` with `ENV FIREBASE_AUTH_EMULATOR_HOST=localhost:9099` added
+  to the `build` stage.
+- **Claude's built-in browser** blocks requests to any host other than the
+  page's, so `auth-emulator.localhost` does not work there. Use
+  `localhost:9099` instead, and let the app reach the same address by
+  sharing the emulator container's network namespace: publish both `3000`
+  and `9099` on the emulator container and start the app with
+  `--network container:<emulator>` (it still reaches PostgreSQL by name,
+  since the emulator container is on the Docker network).
+- **Migrations:** with an empty `node_modules`, `npx prisma` fetches the
+  registry's `latest` (an 8.0 release candidate). Either install first, or
+  build the `builder` target and run
+  `node node_modules/prisma/build/index.js migrate deploy` in it.
+
 Prefer `npm run build && npm start` over `npm run dev` for manual testing:
 hot reload over the Windows bind mount is unreliable and has produced stale
 server code more than once.
