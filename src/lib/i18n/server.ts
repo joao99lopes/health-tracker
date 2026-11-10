@@ -1,11 +1,12 @@
 import "server-only";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { getSessionUser } from "@/lib/auth/session";
 import { getProfileLanguage } from "@/lib/profile/queries";
 import { getDictionary, type Dictionary } from "@/lib/i18n/dictionary";
 import {
   DEFAULT_LANGUAGE,
+  LANGUAGE_COOKIE,
   isLanguage,
   type Language,
 } from "@/lib/i18n/languages";
@@ -14,9 +15,11 @@ import {
  * Server-side language resolution, in order of authority:
  *
  * 1. the signed-in user's stored preference,
- * 2. the browser's `Accept-Language`, so a signed-out or brand-new user is not
+ * 2. the language this browser was using when it last signed out (the
+ *    `LANGUAGE_COOKIE`), so signing out does not switch the language,
+ * 3. the browser's `Accept-Language`, so a signed-out or brand-new user is not
  *    forced into English before they can pick,
- * 3. the default.
+ * 4. the default.
  */
 
 /** First supported language in the header's list, ignoring quality weights. */
@@ -41,6 +44,10 @@ export async function resolveLanguage(): Promise<Language> {
     if (preferred) {
       return preferred;
     }
+  }
+  const remembered = (await cookies()).get(LANGUAGE_COOKIE)?.value;
+  if (remembered !== undefined && isLanguage(remembered)) {
+    return remembered;
   }
   const requestHeaders = await headers();
   return (

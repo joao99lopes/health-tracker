@@ -20,6 +20,16 @@ export function isLanguage(value: string): value is Language {
   return (LANGUAGES as readonly string[]).includes(value);
 }
 
+/**
+ * Remembers a signed-out browser's language: set on sign-out from the
+ * profile's choice, so the sign-in page that follows is not suddenly in the
+ * browser's language instead. It holds a language code and nothing else.
+ */
+export const LANGUAGE_COOKIE = "lang";
+
+/** A year: it is only a display preference. */
+export const LANGUAGE_COOKIE_MAX_AGE_SECONDS = 365 * 24 * 60 * 60;
+
 /** How each language names itself, for the language picker. */
 export const LANGUAGE_NAMES: Record<Language, string> = {
   en: "English",

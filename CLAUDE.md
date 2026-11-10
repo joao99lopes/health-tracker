@@ -164,6 +164,15 @@ framework dependency. Put them next to the code as `*.test.ts`, import with an
 explicit `.ts` extension, and keep them to pure logic — the runner has no DOM
 and does not resolve the `@/` alias.
 
+Browser tests live in `e2e/` with their **own** `package.json` (Playwright
+and axe, exact versions matching the `mcr.microsoft.com/playwright` image),
+so nothing of theirs reaches the app's dependencies or images; `e2e` is in
+`.dockerignore` and excluded from the root `tsconfig.json`.
+`scripts/e2e.sh <app-image> <migrate-image>` starts PostgreSQL, the Firebase
+Auth emulator (`e2e/emulator/`) and the images, then runs the suite in the
+Playwright image. The test browser bypasses the CSP (the shipped images do
+not allow the emulator); the headers are covered by the smoke test.
+
 `npm run typecheck` **needs a prior `dev` or `build`.** Next 16 generates global
 route types (`LayoutProps`, `PageProps`, …) into `.next/types/`, so a standalone
 `tsc` on a clean tree reports them as missing. `npm run build` is the
@@ -263,10 +272,11 @@ Things there are deliberate and easy to undo by accident:
   container limit on the Pi.
 
 Images are built in GitHub Actions (`.github/workflows/docker-arm64.yml`) on
-a native arm64 runner, never on the Pi. Nothing is pushed until lint, tests
-and `scripts/smoke-test.sh` pass, and `:migrate` is pushed before `:latest`.
-Run the smoke test locally with
-`scripts/smoke-test.sh <app-image> <migrate-image>`.
+a native arm64 runner, never on the Pi. Nothing is pushed until lint, tests,
+`scripts/smoke-test.sh` and the browser tests (`scripts/e2e.sh`) pass, and
+`:migrate` is pushed before `:latest`. Run either locally against a pair of
+images: `scripts/smoke-test.sh <app-image> <migrate-image>`, likewise
+`scripts/e2e.sh`.
 
 Security headers (CSP and friends) are defined in
 `src/lib/security/headers.ts` and applied in `next.config.ts`. The app is

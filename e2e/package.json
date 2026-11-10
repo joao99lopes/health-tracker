@@ -1,0 +1,13 @@
+{
+  "name": "health-tracker-e2e",
+  "private": true,
+  "description": "Browser end-to-end tests. Kept apart from the app so Playwright never reaches its dependencies or images; run with scripts/e2e.sh.",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.10.1",
+    "@playwright/test": "1.49.1"
+  }
+}

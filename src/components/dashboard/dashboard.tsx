@@ -10,8 +10,7 @@ import {
   MinusIcon,
 } from "lucide-react";
 import { EvolutionSection } from "@/components/charts/evolution-section";
-import { ComparisonCard } from "@/components/dashboard/comparison-card";
-import { PeriodComparisonCard } from "@/components/dashboard/period-comparison-card";
+import { ComparisonTable } from "@/components/dashboard/comparison-table";
 import { EmptyState } from "@/components/empty-state";
 import { AddMeasurementButton } from "@/components/measurements/add-measurement-fab";
 import { LocalDateTime } from "@/components/measurements/local-date-time";
@@ -19,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { ageInYears } from "@/lib/health/age";
+import { formatRelativeAge } from "@/lib/measurements/age";
 import {
   classifyBmi,
   isAdultBmiApplicable,
@@ -30,7 +30,6 @@ import {
 } from "@/lib/dashboard/view";
 import { useI18n } from "@/lib/i18n/context";
 import {
-  compareLatestToFirst,
   compareLatestToPrevious,
   type MetricComparison,
 } from "@/lib/measurements/comparison";
@@ -39,9 +38,12 @@ import {
   formatMetricDelta,
   formatMetricValue,
 } from "@/lib/measurements/format";
-import { metricLabel } from "@/lib/measurements/messages";
-import type { Measurement } from "@/lib/measurements/queries";
-import { metricValue, type Metric } from "@/lib/measurements/metrics";
+import { metricName } from "@/lib/measurements/messages";
+import {
+  metricValue,
+  type MeasurementSnapshot,
+  type Metric,
+} from "@/lib/measurements/metrics";
 import {
   changeTone,
   type DirectionPreferences,
@@ -107,7 +109,7 @@ const DIRECTION_ICONS = {
  * nothing here simply has nothing to compare with.
  */
 function previousChanges(
-  measurements: readonly Measurement[],
+  measurements: readonly MeasurementSnapshot[],
 ): Map<Metric, MetricComparison> {
   const comparison = compareLatestToPrevious(measurements);
   return new Map(
@@ -158,13 +160,14 @@ function MetricCard({
         type="button"
         onClick={onSelect}
         aria-pressed={selected}
-        aria-label={t.dashboard.showInChart(metricLabel(t, reading.metric))}
+        aria-label={t.dashboard.showInChart(metricName(t, reading.metric))}
         className="hover:bg-foreground/[0.03] focus-visible:ring-ring/50 absolute inset-0 z-10 rounded-[inherit] outline-none focus-visible:ring-3"
       />
       <CardContent className="flex flex-col gap-1.5">
         <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
           <MetricIcon className="text-primary size-3.5 shrink-0" aria-hidden />
-          {metricLabel(t, reading.metric)}
+          {/* The value below carries the unit; the name does not repeat it. */}
+          {metricName(t, reading.metric)}
         </p>
         <p className="text-xl font-semibold tabular-nums sm:text-2xl">
           {formatMetricValue(reading.metric, reading.value, language)}
@@ -221,7 +224,7 @@ export function Dashboard({
   now,
   initialView,
 }: {
-  measurements: Measurement[];
+  measurements: MeasurementSnapshot[];
   /** From the profile, for the age the WHO BMI bands are defined against. */
   birthDate: string | null;
   /**
@@ -235,6 +238,7 @@ export function Dashboard({
   initialView: DashboardView;
 }) {
   const { t, language } = useI18n();
+  const hydrated = useHydrated();
   const [view, setView] = useState(initialView);
   const updateView = (change: Partial<DashboardView>) =>
     setView((current) => ({ ...current, ...change }));
@@ -307,6 +311,13 @@ export function Dashboard({
             <p className="font-heading text-lg font-semibold">
               <LocalDateTime value={latest.measuredAt} />
             </p>
+            {/* How long ago, at a glance - in the reader's calendar days,
+                which only the browser knows, so it appears after hydration. */}
+            {hydrated && (
+              <p className="text-muted-foreground text-sm">
+                {formatRelativeAge(latest.measuredAt, now, language)}
+              </p>
+            )}
           </div>
 
           {bmi !== null && (
@@ -367,21 +378,15 @@ export function Dashboard({
         onViewChange={updateView}
       />
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <ComparisonCard
-          title={t.dashboard.vsFirst}
-          comparison={compareLatestToFirst(measurements)}
-          directions={directions}
-        />
-        {/* The third comparison: both ends of a period the reader picks. */}
-        <PeriodComparisonCard
-          measurements={measurements}
-          directions={directions}
-          now={now}
-          period={view.comparePeriod}
-          onPeriodChange={(comparePeriod) => updateView({ comparePeriod })}
-        />
-      </div>
+      {/* The other two comparisons (latest vs previous is on each card):
+          against the first reading, and over a period the reader picks. */}
+      <ComparisonTable
+        measurements={measurements}
+        directions={directions}
+        now={now}
+        period={view.comparePeriod}
+        onPeriodChange={(comparePeriod) => updateView({ comparePeriod })}
+      />
 
       <Button asChild variant="outline" className="self-start">
         <Link href="/measurements">

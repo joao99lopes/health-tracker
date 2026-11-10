@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useHydrated } from "@/hooks/use-hydrated";
+import { callServer } from "@/lib/client/server-call";
 import {
   Select,
   SelectContent,
@@ -98,7 +99,14 @@ export function ProfileForm({
   );
 
   const [issues, setIssues] = useState<ProfileIssue[]>([]);
-  const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
+  const [status, setStatus] = useState<
+    "idle" | "saved" | "error" | "unreachable"
+  >("idle");
+  // The chosen options' labels, given to the selects directly: Radix only
+  // learns an item's text once its list has mounted in the browser, so
+  // without them the server-rendered page shows the selects empty.
+  const sexOption = SEXES.find((option) => option === sex);
+  const languageOption = LANGUAGES.find((option) => option === language);
   const [pending, setPending] = useState(false);
   // A submission before hydration would be a native GET.
   const hydrated = useHydrated();
@@ -115,15 +123,15 @@ export function ProfileForm({
     }
 
     setPending(true);
-    const result = await saveProfileAction(input);
+    const result = await callServer(() => saveProfileAction(input));
     setPending(false);
 
     if (result.status === "invalid") {
       setIssues(result.issues);
       return;
     }
-    if (result.status === "error") {
-      setStatus("error");
+    if (result.status === "error" || result.status === "unreachable") {
+      setStatus(result.status);
       return;
     }
 
@@ -189,7 +197,9 @@ export function ProfileForm({
               <Label htmlFor="sex">{t.profile.sex}</Label>
               <Select value={sex} onValueChange={setSex}>
                 <SelectTrigger id="sex" className="w-full">
-                  <SelectValue placeholder={t.common.choose} />
+                  <SelectValue placeholder={t.common.choose}>
+                    {sexOption && t.profile.sexes[sexOption]}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {SEXES.map((option) => (
@@ -231,7 +241,9 @@ export function ProfileForm({
             <Label htmlFor="language">{t.profile.language}</Label>
             <Select value={language} onValueChange={setLanguage}>
               <SelectTrigger id="language" className="w-full sm:w-56">
-                <SelectValue placeholder={t.common.choose} />
+                <SelectValue placeholder={t.common.choose}>
+                  {languageOption && LANGUAGE_NAMES[languageOption]}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {LANGUAGES.map((option) => (
@@ -255,10 +267,14 @@ export function ProfileForm({
           {/* Announced when it appears: a save that only changed a colour on
               screen is a save the reader can miss entirely. */}
           <div aria-live="polite">
-            {status === "error" && (
+            {(status === "error" || status === "unreachable") && (
               <Alert variant="destructive">
                 <TriangleAlertIcon />
-                <AlertDescription>{t.profile.failed}</AlertDescription>
+                <AlertDescription>
+                  {status === "unreachable"
+                    ? t.common.unreachable
+                    : t.profile.failed}
+                </AlertDescription>
               </Alert>
             )}
             {status === "saved" && (

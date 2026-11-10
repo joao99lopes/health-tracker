@@ -3,21 +3,33 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent, type KeyboardEvent } from "react";
-import { InfoIcon, PlusIcon, TriangleAlertIcon } from "lucide-react";
+import {
+  HistoryIcon,
+  InfoIcon,
+  PlusIcon,
+  TriangleAlertIcon,
+} from "lucide-react";
 import {
   createMeasurementAction,
   updateMeasurementAction,
 } from "@/app/(app)/measurements/actions";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertAction, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useHydrated } from "@/hooks/use-hydrated";
+import { callServer } from "@/lib/client/server-call";
 import { useI18n } from "@/lib/i18n/context";
 import type { Dictionary } from "@/lib/i18n/dictionary";
 import { toLocalInputValue } from "@/lib/measurements/datetime";
+import {
+  DRAFT_STORAGE_KEY,
+  parseDraft,
+  serializeDraft,
+  type MeasurementDraft,
+} from "@/lib/measurements/draft";
 import {
   MEASUREMENT_FIELD_SPECS,
   MEASUREMENT_VALUE_FIELDS,
@@ -72,6 +84,31 @@ function FieldIssues({
 }
 
 /**
+ * `sessionStorage` can throw (private browsing, storage disabled); a draft is
+ * a convenience and never worth an error.
+ */
+function readStoredDraft(): MeasurementDraft | null {
+  try {
+    return parseDraft(window.sessionStorage.getItem(DRAFT_STORAGE_KEY));
+  } catch {
+    return null;
+  }
+}
+
+function storeDraft(draft: MeasurementDraft | null): void {
+  try {
+    const text = draft === null ? null : serializeDraft(draft);
+    if (text === null) {
+      window.sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+    } else {
+      window.sessionStorage.setItem(DRAFT_STORAGE_KEY, text);
+    }
+  } catch {
+    // Nothing to do: the form works the same without a draft.
+  }
+}
+
+/**
  * Add-or-edit form for one measurement.
  *
  * The same validation module runs here and in the server action, so the two
@@ -116,10 +153,22 @@ export function MeasurementForm({
   const measuredAt =
     typedMeasuredAt ??
     (hydrated ? toLocalInputValue(measurement?.measuredAt ?? now) : "");
+  // Adding almost always records "now", so the date input stays folded away
+  // behind "Change" until it is wanted; it opens on its own when the date
+  // has a problem. Editing shows it, since the date is part of the record.
+  const [dateOpen, setDateOpen] = useState(editing);
+
+  // A draft left by an earlier visit to this form, offered back once. Read in
+  // the state initializer so it is the draft from *before* this visit, not
+  // the one written as the reader types; it is only rendered after
+  // hydration, so the server pass (which has no storage) still matches.
+  const [offeredDraft, setOfferedDraft] = useState<MeasurementDraft | null>(
+    () => (editing || typeof window === "undefined" ? null : readStoredDraft()),
+  );
 
   const [issues, setIssues] = useState<MeasurementIssue[]>([]);
   const [status, setStatus] = useState<
-    "idle" | "error" | "not-found" | "no-height"
+    "idle" | "error" | "not-found" | "no-height" | "unreachable"
   >("idle");
   const [pending, setPending] = useState(false);
   // Which field's "how to measure" note is open. Collapsed by default so the
@@ -138,8 +187,51 @@ export function MeasurementForm({
   const visibleFields = showAllFields ? MEASUREMENT_VALUE_FIELDS : leadingFields;
   const hiddenCount = MEASUREMENT_VALUE_FIELDS.length - visibleFields.length;
 
+  /** Keeps what has been typed so far, when adding; see `draft.ts`. */
+  function keepDraft(change: Partial<MeasurementDraft>) {
+    if (editing) {
+      return;
+    }
+    storeDraft({ values, note, measuredAt: typedMeasuredAt, ...change });
+  }
+
   function setValue(field: MeasurementValueField, value: string) {
     setValues((current) => ({ ...current, [field]: value }));
+    keepDraft({ values: { ...values, [field]: value } });
+  }
+
+  function changeNote(value: string) {
+    setNote(value);
+    keepDraft({ note: value });
+  }
+
+  function changeMeasuredAt(value: string) {
+    setTypedMeasuredAt(value);
+    keepDraft({ measuredAt: value });
+  }
+
+  function restoreDraft(draft: MeasurementDraft) {
+    setValues(draft.values);
+    setNote(draft.note);
+    if (draft.measuredAt !== null) {
+      setTypedMeasuredAt(draft.measuredAt);
+      setDateOpen(true);
+    }
+    // A restored value in a field that is folded away would be invisible.
+    if (
+      MEASUREMENT_VALUE_FIELDS.some(
+        (field) =>
+          draft.values[field].trim() !== "" && !leadingFields.includes(field),
+      )
+    ) {
+      setShowAllFields(true);
+    }
+    setOfferedDraft(null);
+  }
+
+  function discardDraft() {
+    storeDraft(null);
+    setOfferedDraft(null);
   }
 
   /**
@@ -165,17 +257,27 @@ export function MeasurementForm({
     event.preventDefault();
     setStatus("idle");
 
-    const input = toMeasurementInput(measuredAt, values, note);
+    // Left at "now", the instant is taken as the form is sent, not as it was
+    // opened: a form that sat open for an hour still records when it was saved.
+    const submittedAt =
+      typedMeasuredAt ??
+      toLocalInputValue(measurement?.measuredAt ?? new Date());
+    const input = toMeasurementInput(submittedAt, values, note);
     const parsed = parseMeasurementInput(input);
     setIssues(parsed.issues);
     if (!parsed.measurement) {
+      if (parsed.issues.some((issue) => issue.field === "measuredAt")) {
+        setDateOpen(true);
+      }
       return;
     }
 
     setPending(true);
-    const result = measurement
-      ? await updateMeasurementAction(measurement.id, input)
-      : await createMeasurementAction(input);
+    const result = await callServer(() =>
+      measurement
+        ? updateMeasurementAction(measurement.id, input)
+        : createMeasurementAction(input),
+    );
     setPending(false);
 
     if (result.status === "invalid") {
@@ -183,10 +285,13 @@ export function MeasurementForm({
       return;
     }
     if (result.status !== "saved") {
+      // Unreachable included: nothing is known to be saved, and everything
+      // typed is still in the form to send again.
       setStatus(result.status);
       return;
     }
 
+    storeDraft(null);
     // The detail page confirms what happened; `replace` keeps the form out
     // of the history so "back" does not reopen a form that was submitted.
     router.replace(
@@ -211,7 +316,10 @@ export function MeasurementForm({
         ? t.measurements.notFound
         : status === "no-height"
           ? t.measurements.noHeight
-          : null;
+          : status === "unreachable"
+            ? t.common.unreachable
+            : null;
+  const showDateInput = dateOpen || invalid("measuredAt");
 
   return (
     // `overflow-visible`: the card clips by default, and a clipping ancestor
@@ -219,27 +327,75 @@ export function MeasurementForm({
     <Card className="overflow-visible [--card-spacing:--spacing(6)]">
       <CardContent>
         <form onSubmit={handleSubmit} className="flex flex-col gap-7" noValidate>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="measuredAt">{t.measurements.measuredAt}</Label>
-            <Input
-              id="measuredAt"
-              name="measuredAt"
-              type="datetime-local"
-              className="w-full sm:w-64"
-              aria-invalid={invalid("measuredAt") || undefined}
-              aria-describedby={
-                invalid("measuredAt")
-                  ? "measuredAt-issues measuredAt-hint"
-                  : "measuredAt-hint"
-              }
-              value={measuredAt}
-              onChange={(event) => setTypedMeasuredAt(event.target.value)}
-            />
-            <p id="measuredAt-hint" className="text-muted-foreground text-xs">
-              {t.measurements.measuredAtHint}
-            </p>
-            <FieldIssues field="measuredAt" issues={issues} t={t} />
-          </div>
+          {hydrated && offeredDraft !== null && (
+            <Alert>
+              <HistoryIcon />
+              <AlertDescription>{t.measurements.draftFound}</AlertDescription>
+              <AlertAction className="flex gap-2 max-sm:static max-sm:col-span-full max-sm:mt-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => restoreDraft(offeredDraft)}
+                >
+                  {t.measurements.draftRestore}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={discardDraft}
+                >
+                  {t.measurements.draftDiscard}
+                </Button>
+              </AlertAction>
+            </Alert>
+          )}
+
+          {showDateInput ? (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="measuredAt">{t.measurements.measuredAt}</Label>
+              <Input
+                id="measuredAt"
+                name="measuredAt"
+                type="datetime-local"
+                className="w-full sm:w-64"
+                // Opened with "Change": the reader is here to edit it.
+                autoFocus={!editing}
+                aria-invalid={invalid("measuredAt") || undefined}
+                aria-describedby={
+                  invalid("measuredAt")
+                    ? "measuredAt-issues measuredAt-hint"
+                    : "measuredAt-hint"
+                }
+                value={measuredAt}
+                onChange={(event) => changeMeasuredAt(event.target.value)}
+              />
+              <p id="measuredAt-hint" className="text-muted-foreground text-xs">
+                {t.measurements.measuredAtHint}
+              </p>
+              <FieldIssues field="measuredAt" issues={issues} t={t} />
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3">
+              <p className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium">
+                  {t.measurements.measuredAt}
+                </span>
+                <span className="text-muted-foreground text-sm">
+                  {t.measurements.now}
+                </span>
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                aria-label={t.measurements.changeMeasuredAt}
+                onClick={() => setDateOpen(true)}
+              >
+                {t.measurements.change}
+              </Button>
+            </div>
+          )}
 
           <fieldset className="border-border flex flex-col gap-4 border-t pt-6">
             <legend className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
@@ -260,11 +416,11 @@ export function MeasurementForm({
                 return (
                   <div key={field} className="flex flex-col gap-2">
                     <div className="flex items-center gap-1">
+                      {/* No "(optional)" on each value: the page says once
+                          that all of them are, and repeating it seven times
+                          only lengthens the form. */}
                       <Label htmlFor={field}>
-                        {t.measurements.fields[field]}{" "}
-                        <span className="text-muted-foreground font-normal">
-                          ({t.common.optional})
-                        </span>
+                        {t.measurements.fields[field]}
                       </Label>
                       {help !== null && (
                         <Button
@@ -355,7 +511,7 @@ export function MeasurementForm({
               aria-invalid={invalid("note") || undefined}
               aria-describedby={invalid("note") ? "note-issues note-hint" : "note-hint"}
               value={note}
-              onChange={(event) => setNote(event.target.value)}
+              onChange={(event) => changeNote(event.target.value)}
             />
             <p id="note-hint" className="text-muted-foreground text-xs">
               {t.measurements.noteHint(NOTE_MAX_LENGTH)}
@@ -386,16 +542,18 @@ export function MeasurementForm({
             </Alert>
           )}
 
-          {/* Full width and thumb-reachable on a phone, where the bar stays
-              pinned just above the bottom navigation so saving never needs
-              a scroll; a trailing pair of buttons on a wider screen. */}
-          <div className="border-border bg-card flex flex-col-reverse gap-2 border-t pt-4 max-sm:sticky max-sm:bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] max-sm:z-20 max-sm:-mx-6 max-sm:rounded-b-xl max-sm:px-6 max-sm:pb-4 sm:flex-row sm:justify-end sm:gap-3 sm:pt-6">
+          {/* Thumb-reachable on a phone, where the bar stays pinned just
+              above the bottom navigation so saving never needs a scroll. The
+              two buttons share one row there - stacked, they took a fifth of
+              the screen away from the form - with Save, the wider one, under
+              the right thumb; a trailing pair on a wider screen. */}
+          <div className="border-border bg-card flex flex-row gap-2 border-t pt-4 max-sm:sticky max-sm:bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] max-sm:z-20 max-sm:-mx-6 max-sm:rounded-b-xl max-sm:px-6 max-sm:pb-4 sm:justify-end sm:gap-3 sm:pt-6">
             <Button
               type="button"
               variant="ghost"
               size="lg"
               asChild
-              className="max-sm:w-full"
+              className="max-sm:flex-1"
             >
               <Link href={cancelHref}>{t.common.cancel}</Link>
             </Button>
@@ -404,7 +562,7 @@ export function MeasurementForm({
               size="lg"
               // A submission before hydration would be a native GET.
               disabled={pending || !hydrated}
-              className="max-sm:w-full"
+              className="max-sm:flex-[2]"
             >
               {pending ? t.common.saving : t.common.save}
             </Button>

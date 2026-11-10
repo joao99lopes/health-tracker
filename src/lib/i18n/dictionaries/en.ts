@@ -32,6 +32,9 @@ export const en = {
     delete: "Delete",
     deleting: "Deleting…",
     notRecorded: "Not recorded",
+    /** A request that never got an answer: nothing is known to have changed. */
+    unreachable:
+      "The server did not answer, so nothing was changed. Check the connection and try again.",
     version: (version: string) => `Version ${version}`,
     versionUnknown: "development build",
   },
@@ -75,7 +78,9 @@ export const en = {
     latestValues: "Current values",
     fromEarlier: (when: string) => `From ${when}`,
     vsFirst: "Latest vs first",
-    vsPeriod: "Over a period",
+    comparisons: "Comparisons",
+    since: (date: string) => `since ${date}`,
+    showAllMetrics: (count: number) => `Show all ${count} metrics`,
     perMetricHint: "Each metric between its own readings.",
     notEnoughData: "Not enough data yet.",
     viewAll: "All measurements",
@@ -116,6 +121,8 @@ export const en = {
     compareNoData: (metric: string) =>
       `${metric} has no recorded value in this period.`,
     showTable: "Show as table",
+    rangeLabel: (from: string, to: string) => `${from} – ${to}`,
+    openMetric: (metric: string) => `More on ${metric}`,
     showChart: "Show as chart",
     describe: (d: DescribeChart) =>
       `${d.metric}, ${d.period}: ${d.count === 1 ? "1 reading" : `${d.count} readings`}, from ${d.first} to ${d.last}; lowest ${d.min}, highest ${d.max}.`,
@@ -130,6 +137,19 @@ export const en = {
       trendHint:
         "Trend: the slope of a straight line through the readings of this period. It describes the past, not what comes next.",
     },
+  },
+
+  metricPage: {
+    description:
+      "Every reading of this metric over the period or the dates you choose, with how each one moved from the reading before it.",
+    customRange: "Choose dates…",
+    from: "From",
+    to: "To",
+    rangeInvalid: "The first day must be on or before the last.",
+    readings: "Readings",
+    value: "Value",
+    change: "Change",
+    firstReading: "First reading",
   },
 
   auth: {
@@ -345,6 +365,12 @@ export const en = {
     detailTitle: "Measurement",
     measuredAt: "Date and time",
     measuredAtHint: "A past date and time; defaults to now.",
+    now: "Now",
+    change: "Change",
+    changeMeasuredAt: "Change the date and time",
+    draftFound: "There are values from an earlier visit that were not saved.",
+    draftRestore: "Restore",
+    draftDiscard: "Discard",
     heightAtMeasurement: "Height at this measurement",
     heightFromProfile: (height: string) =>
       `Your current height, ${height}, will be recorded with this measurement.`,
@@ -370,6 +396,7 @@ export const en = {
       "Measure with a tape measure while standing relaxed, at the end of a normal exhalation. Keep the tape horizontal and snug without compressing the skin. Measure at the same location each time so values remain comparable.",
     actions: "Actions",
     created: "Measurement added.",
+    addAnother: "Add another",
     updated: "Measurement saved.",
     notFound: "That measurement no longer exists.",
     saveFailed: "Could not save the measurement. Please try again.",
@@ -377,6 +404,19 @@ export const en = {
     deleteTitle: "Delete this measurement?",
     deleteDescription: (when: string) =>
       `The measurement of ${when} will be permanently deleted. This cannot be undone.`,
+    /**
+     * Field names without units, for labels whose value already carries one
+     * ("Weight" over "68.70 kg"). Written out in full, unlike `fieldsShort`.
+     */
+    fieldNames: {
+      weightKg: "Weight",
+      bodyFatPercent: "Body fat",
+      hydrationPercent: "Hydration",
+      musclePercent: "Muscle",
+      boneMassKg: "Bone mass",
+      visceralFat: "Visceral fat",
+      abdominalCircumferenceCm: "Waist circumference",
+    },
     /** Field names without units, where the value beside them has one. */
     fieldsShort: {
       weightKg: "Weight",

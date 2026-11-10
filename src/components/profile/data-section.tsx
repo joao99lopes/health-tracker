@@ -9,6 +9,7 @@ import {
   UploadIcon,
 } from "lucide-react";
 import { importMeasurementsAction } from "@/app/(app)/measurements/import-actions";
+import { callServer } from "@/lib/client/server-call";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,8 +30,9 @@ import { useTranslations } from "@/lib/i18n/context";
 
 type ImportState =
   | { step: "idle" }
-  | { step: "ready"; text: string; count: number }
-  | { step: "importing" }
+  /** `unreachable`: the last attempt got no answer; the file is kept to retry. */
+  | { step: "ready"; text: string; count: number; unreachable?: boolean }
+  | { step: "importing"; text: string; count: number }
   | { step: "invalid"; issues: ImportIssue[]; totalIssues: number }
   | { step: "done"; imported: number; skipped: number }
   | { step: "error" };
@@ -98,9 +100,15 @@ export function DataSection({
     if (state.step !== "ready") {
       return;
     }
-    const { text } = state;
-    setState({ step: "importing" });
-    const result = await importMeasurementsAction(text);
+    const { text, count } = state;
+    setState({ step: "importing", text, count });
+    const result = await callServer(() => importMeasurementsAction(text));
+    if (result.status === "unreachable") {
+      // Nothing is known to be imported - and re-importing is safe, since
+      // rows already recorded at the same instant are skipped.
+      setState({ step: "ready", text, count, unreachable: true });
+      return;
+    }
     if (result.status === "imported") {
       setState({
         step: "done",
@@ -185,6 +193,12 @@ export function DataSection({
             <div className="flex flex-col gap-3">
               {state.step === "ready" && (
                 <p className="text-sm">{t.data.importReady(state.count)}</p>
+              )}
+              {state.step === "ready" && state.unreachable && (
+                <Alert variant="destructive">
+                  <TriangleAlertIcon />
+                  <AlertDescription>{t.common.unreachable}</AlertDescription>
+                </Alert>
               )}
               <div className="flex flex-col gap-3 sm:flex-row">
                 <Button

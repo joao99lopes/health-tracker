@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth/session";
 import { parseDashboardView } from "@/lib/dashboard/view";
 import { getTranslations } from "@/lib/i18n/server";
-import { listMeasurements } from "@/lib/measurements/queries";
+import { listMeasurementSnapshots } from "@/lib/measurements/queries";
 import { DEFAULT_DIRECTION_PREFERENCES } from "@/lib/preferences/direction";
 import { getProfile } from "@/lib/profile/queries";
 
@@ -28,7 +28,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
   // renders the same view the browser will show.
   const initialView = parseDashboardView(await searchParams);
   const [measurements, profile, { t }] = await Promise.all([
-    listMeasurements(user.id),
+    listMeasurementSnapshots(user.id),
     getProfile(user.id),
     getTranslations(),
   ]);

@@ -2,9 +2,10 @@
 # `next build` itself. The Pi only pulls and runs them
 # (see deploy/compose.yaml).
 #
-# Order matters: nothing is pushed until lint, tests and an end-to-end smoke
-# test of both images pass, and `:migrate` is pushed before `:latest`. An app
-# image must never be published without the migrations it expects.
+# Order matters: nothing is pushed until lint, tests, an end-to-end smoke
+# test of both images and the browser tests (e2e/) pass, and `:migrate` is
+# pushed before `:latest`. An app image must never be published without the
+# migrations it expects.
 name: Build arm64 images
 
 on:
@@ -88,6 +89,11 @@ jobs:
         env:
           EXPECTED_VERSION: ${{ github.sha }}
         run: bash scripts/smoke-test.sh "$IMAGE:${{ github.sha }}" "$IMAGE:migrate-${{ github.sha }}"
+
+      # The browser suite in e2e/ against the very images about to be pushed,
+      # with the Firebase Auth emulator in place of Firebase.
+      - name: Browser tests
+        run: bash scripts/e2e.sh "$IMAGE:${{ github.sha }}" "$IMAGE:migrate-${{ github.sha }}"
 
       - name: Image sizes
         run: docker image ls "$IMAGE"

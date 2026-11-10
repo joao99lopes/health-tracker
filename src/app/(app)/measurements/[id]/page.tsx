@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2Icon, ChevronLeftIcon } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ChevronLeftIcon } from "lucide-react";
 import { MeasurementDetail } from "@/components/measurements/measurement-detail";
+import { SavedNotice } from "@/components/measurements/saved-notice";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/session";
@@ -56,14 +56,7 @@ export default async function MeasurementPage({
       </div>
 
       {(saved === "created" || saved === "updated") && (
-        <Alert role="status">
-          <CheckCircle2Icon className="text-primary" />
-          <AlertDescription>
-            {saved === "created"
-              ? t.measurements.created
-              : t.measurements.updated}
-          </AlertDescription>
-        </Alert>
+        <SavedNotice kind={saved} />
       )}
 
       <MeasurementDetail

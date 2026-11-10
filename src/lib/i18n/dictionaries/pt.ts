@@ -21,6 +21,8 @@ export const pt: Dictionary = {
     delete: "Eliminar",
     deleting: "A eliminar…",
     notRecorded: "Não registado",
+    unreachable:
+      "O servidor não respondeu, por isso nada foi alterado. Verifique a ligação e tente novamente.",
     version: (version: string) => `Versão ${version}`,
     versionUnknown: "build de desenvolvimento",
   },
@@ -64,7 +66,9 @@ export const pt: Dictionary = {
     latestValues: "Valores atuais",
     fromEarlier: (when: string) => `De ${when}`,
     vsFirst: "Última vs primeira",
-    vsPeriod: "Ao longo de um período",
+    comparisons: "Comparações",
+    since: (date: string) => `desde ${date}`,
+    showAllMetrics: (count: number) => `Mostrar as ${count} métricas`,
     perMetricHint: "Cada métrica entre os seus próprios registos.",
     notEnoughData: "Ainda não há dados suficientes.",
     viewAll: "Todas as medições",
@@ -106,6 +110,8 @@ export const pt: Dictionary = {
     compareNoData: (metric: string) =>
       `${metric} não tem valores registados neste período.`,
     showTable: "Ver como tabela",
+    rangeLabel: (from: string, to: string) => `${from} – ${to}`,
+    openMetric: (metric: string) => `Mais sobre ${metric}`,
     showChart: "Ver como gráfico",
     describe: (d: DescribeChart) =>
       `${d.metric}, ${d.period}: ${d.count === 1 ? "1 leitura" : `${d.count} leituras`}, de ${d.first} a ${d.last}; mínimo ${d.min}, máximo ${d.max}.`,
@@ -120,6 +126,19 @@ export const pt: Dictionary = {
       trendHint:
         "Tendência: o declive de uma reta ajustada às leituras deste período. Descreve o passado, não o que vem a seguir.",
     },
+  },
+
+  metricPage: {
+    description:
+      "Todas as leituras desta métrica no período ou nas datas que escolher, com a variação de cada uma em relação à anterior.",
+    customRange: "Escolher datas…",
+    from: "De",
+    to: "Até",
+    rangeInvalid: "O primeiro dia tem de ser igual ou anterior ao último.",
+    readings: "Leituras",
+    value: "Valor",
+    change: "Variação",
+    firstReading: "Primeira leitura",
   },
 
   auth: {
@@ -333,6 +352,12 @@ export const pt: Dictionary = {
     detailTitle: "Medição",
     measuredAt: "Data e hora",
     measuredAtHint: "Uma data e hora passadas; por omissão, agora.",
+    now: "Agora",
+    change: "Alterar",
+    changeMeasuredAt: "Alterar a data e a hora",
+    draftFound: "Há valores de uma visita anterior que não foram guardados.",
+    draftRestore: "Recuperar",
+    draftDiscard: "Descartar",
     heightAtMeasurement: "Altura nesta medição",
     heightFromProfile: (height: string) =>
       `A sua altura atual, ${height}, será registada com esta medição.`,
@@ -357,6 +382,7 @@ export const pt: Dictionary = {
       "Meça com uma fita métrica, de pé e relaxado, no final de uma expiração normal. Mantenha a fita horizontal, justa mas sem apertar a pele. Meça sempre no mesmo local para tornar os valores comparáveis.",
     actions: "Ações",
     created: "Medição adicionada.",
+    addAnother: "Adicionar outra",
     updated: "Medição guardada.",
     notFound: "Essa medição já não existe.",
     saveFailed: "Não foi possível guardar a medição. Tente novamente.",
@@ -364,6 +390,15 @@ export const pt: Dictionary = {
     deleteTitle: "Eliminar esta medição?",
     deleteDescription: (when: string) =>
       `A medição de ${when} será eliminada definitivamente. Esta ação não pode ser anulada.`,
+    fieldNames: {
+      weightKg: "Peso",
+      bodyFatPercent: "Gordura corporal",
+      hydrationPercent: "Hidratação",
+      musclePercent: "Músculo",
+      boneMassKg: "Massa óssea",
+      visceralFat: "Gordura visceral",
+      abdominalCircumferenceCm: "Perímetro abdominal",
+    },
     fieldsShort: {
       weightKg: "Peso",
       bodyFatPercent: "Gordura",

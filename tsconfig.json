@@ -33,5 +33,6 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  // e2e/ has its own dependencies (Playwright), installed only in its container.
+  "exclude": ["node_modules", "e2e"]
 }

@@ -23,8 +23,9 @@ deliberately gives no advice (see "Explicitly out of scope" in `CLAUDE.md`).
 
 | Route | What it does |
 | ----- | ------------ |
-| `/` Dashboard | Latest measurement, current value per metric (with change vs. that metric's previous reading; a card opens that metric in the chart), evolution chart with a period summary and a table view, three comparisons (latest vs previous / vs first / over a period). Chart and comparison choices live in the address (`?metric=&period=&avg=&vs=&cmp=`). |
-| `/measurements` | History grouped by month, 50 rows at a time, filtered by period (`?period=&show=`); `/new` (last values as placeholders, unused fields behind "more values"), `/[id]` (confirms a save via `?saved=`), `/[id]/edit`. Optional free-text **note** per measurement. |
+| `/` Dashboard | Latest measurement and how long ago it was, current value per metric (with change vs. that metric's previous reading; a card opens that metric in the chart), evolution chart with a period summary, a table view and a link to the metric's own page, and one comparison table (each metric vs its first reading and over a chosen period; on a phone the first five rows until "Show all"). Chart and comparison choices live in the address (`?metric=&period=&avg=&vs=&cmp=`). Reads snapshots only (no ids, no notes). |
+| `/metrics/[metric]` | One metric: full-width chart over a period **or a range of dates** (`?period=` or `?from=&to=`, plus `&avg=`), the period's figures, and every reading with its change from the one before. |
+| `/measurements` | History grouped by month, 50 rows at a time, filtered by period (`?period=&show=`); `/new` (last values as placeholders, unused fields behind "more values"), `/new` folds the date away as "Now" with "Change", keeps an unsaved draft in `sessionStorage` (offered back, never applied unasked), `/[id]` (confirms a save via `?saved=`, then strips it; "Add another" after adding), `/[id]/edit`. Optional free-text **note** per measurement. |
 | `/report?period=` | Printable summary of a period: per-metric figures, one chart, every measurement. Opened from the measurement list. |
 | `/profile` | Profile (birth date, sex, height, language, direction preferences), **Your data** (CSV/JSON export, CSV import), **Account** (change password, delete account), running version. |
 | `/login`, `/register`, `/forgot-password`, `/login/email-link` | Firebase Auth: email + password (verification required), Google, one-time email link. |
@@ -53,10 +54,11 @@ least-squares weekly trend, omitted under 7 days) are in
 **i18n**: English and Portuguese, dictionaries in `src/lib/i18n/dictionaries/`.
 No user-facing string lives in JSX. Every page sets its own `<title>`.
 
-**Quality bar today**: 235 unit tests (pure logic, Node's runner), strict
-TypeScript, ESLint clean, `npm run build` clean, an end-to-end image smoke test
-(`scripts/smoke-test.sh`) gating every publish. The UX review below was also
-checked with a browser end-to-end suite (§5) that is *not* in the repository.
+**Quality bar today**: 256 unit tests (pure logic, Node's runner), strict
+TypeScript, ESLint clean, `npm run build` clean, and two checks of the images
+gating every publish: the smoke test (`scripts/smoke-test.sh`) and the browser
+suite in `e2e/` (`scripts/e2e.sh`, 20 Playwright tests including axe WCAG 2.1
+AA in both themes).
 
 ---
 
@@ -122,6 +124,31 @@ From the first `/propose-improvements` review (2026-11-10), all built:
 - **Light theme `--primary` and `--destructive` were darkened** to reach
   WCAG AA (4.5:1); check contrast if either is changed again.
 
+From the second `/propose-improvements` review (2026-11-10), all built:
+
+- **No server-action call may hang.** Every call from the browser goes through
+  `callServer` (`src/lib/client/server-call.ts`): a request that gets no
+  answer becomes `unreachable`, shown as `t.common.unreachable`, with the form
+  and its values left as they were. Redirect/not-found signals pass through.
+- **The add form keeps an unsaved draft** in `sessionStorage` and *offers* it
+  back after a reload; it is never applied unasked (same reason as no
+  pre-filling). The date is "Now" until "Change", and "now" is taken when the
+  form is sent.
+- **The dashboard still switches view in the browser** (decision above), so
+  it still receives the whole history - but as snapshots
+  (`listMeasurementSnapshots`: no ids, no notes). Sending only the chosen
+  period was proposed and set aside because it would undo that decision.
+- **One comparison table** replaces the two comparison cards. The relative
+  change is omitted for percentage metrics and where the rounded change is
+  zero, so two numbers never contradict each other.
+- **A range of dates exists only on the metric page** (`/metrics/[metric]`).
+  The period set in `periods.ts` is unchanged and still defined once.
+- **Signed-out pages keep the reader's language** through a `lang` cookie set
+  on sign-out (a language code, nothing else).
+- **Browser tests gate publishing** (`scripts/e2e.sh` in CI, after the smoke
+  test). The test browser bypasses the CSP so the shipped images can talk to
+  the emulator; CSP headers stay covered by the smoke test.
+
 ---
 
 ## 4. Working on it locally
@@ -130,8 +157,9 @@ Node is not installed on the Windows host; every `npm` command runs in
 `node:22-bookworm` with `node_modules` in the named volume
 `health_tracker_node_modules` (see `CLAUDE.md` → Development environment).
 
-**Running the app without a Firebase project** — the Auth emulator. The
-emulator image is not in the repo; this is the recipe used so far:
+**Running the app without a Firebase project** — the Auth emulator. Its
+image is `e2e/emulator/Dockerfile`, and `scripts/e2e.sh` is a complete,
+working setup of PostgreSQL + emulator + the images to copy from. The recipe:
 
 ```Dockerfile
 FROM node:22-bookworm
@@ -204,7 +232,11 @@ server code more than once.
   export/re-import, keyboard and skip link, axe WCAG 2.1 AA (both themes,
   signed in and out), 375 px layout, and the report PDF. It passed 21/21 on
   amd64 and on the **arm64** images under QEMU with the Pi's memory limits
-  (app peaked at ~270 MB of 512 MB). The script was kept outside the repo.
+  (app peaked at ~270 MB of 512 MB). That script was kept outside the repo;
+  **`e2e/` is its successor in the repository** (20 tests, run by
+  `scripts/e2e.sh` locally and in CI). Not yet ported from the old one:
+  password reset, email link, Google, password change, account deletion and
+  the report PDF.
   Lessons from writing it:
   - Wait for hydration (`waitUntil: "networkidle"`) before typing: text typed
     into a server-rendered input before React hydrates is lost.
@@ -229,7 +261,6 @@ server code more than once.
 - `CLAUDE.md` → UI components still says dark mode "is not wired up yet", but
   `src/components/theme-toggle.tsx` and `src/lib/theme/theme.ts` implement a
   light/dark/system toggle. The sentence is stale.
-- The Firebase Auth emulator recipe above lives only in this file.
 - GitHub Actions warns that `actions/checkout@v4`, `setup-node@v4` and the
   `docker/*` actions target Node 20, which runners now force onto Node 24.
   Harmless today; bump the action versions when convenient.
@@ -243,11 +274,12 @@ server code more than once.
 - **Typing before hydration is lost** (pre-existing): on a slow first load a
   value typed into a form before React hydrates disappears. More likely on the
   Pi than on a desktop. Not addressed.
-- **`?saved=` stays in the address** after a save, so reloading the detail
-  page shows the confirmation again. Harmless; could be stripped client-side.
-- **The browser end-to-end suite is not in the repository.** Adding it (with
-  the Playwright image as a dev-only tool, never in the runtime image) would
-  make the checks in §5 repeatable in CI; it is an owner decision.
+- **The browser suite has not run in CI yet**: it passed locally against
+  amd64 images. The first push runs it on the arm64 runner, pulling the
+  Playwright image (about 2 GB) and building the emulator image each time;
+  expect a few extra minutes per publish.
+- The metric page is opened from the chart ("More on …"), not from the metric
+  cards, which still select the chart's metric as the first review decided.
 - Node 22 now appears to be installed on the Windows host (`node -v` →
   22.22.0 from Git Bash), but every documented command still runs in the
   container; `CLAUDE.md` says to drop the prefix once Node is installed. Not
@@ -257,9 +289,9 @@ server code more than once.
 
 ## 7. Next step
 
-The first `/propose-improvements` review is fully built and deployed. Before
-another review, check the open items in §6 on the Pi (print from Chrome, the
-phone). Then run `/propose-improvements` again (defined in
+Both `/propose-improvements` reviews are built; the second is not deployed
+yet. After deploying it, check the open items in §6 on the Pi (print from
+Chrome, the phone, the first CI run of the browser suite). Then run `/propose-improvements` again (defined in
 [`.claude/commands/propose-improvements.md`](../.claude/commands/propose-improvements.md))
 for a fresh pass; it only analyses and proposes and changes nothing until the
 owner picks what to build.

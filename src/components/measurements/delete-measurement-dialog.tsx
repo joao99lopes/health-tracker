@@ -17,6 +17,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { callServer } from "@/lib/client/server-call";
 import { useI18n } from "@/lib/i18n/context";
 import { formatDateTime } from "@/lib/measurements/format";
 
@@ -47,16 +48,16 @@ export function DeleteMeasurementDialog({
 
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<"error" | "unreachable" | null>(null);
 
   async function handleDelete() {
     setPending(true);
-    setFailed(false);
-    const result = await deleteMeasurementAction(id);
+    setFailed(null);
+    const result = await callServer(() => deleteMeasurementAction(id));
     setPending(false);
 
-    if (result.status === "error") {
-      setFailed(true);
+    if (result.status === "error" || result.status === "unreachable") {
+      setFailed(result.status);
       return;
     }
 
@@ -101,9 +102,11 @@ export function DeleteMeasurementDialog({
             )}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        {failed && (
+        {failed !== null && (
           <p role="alert" className="text-destructive text-sm">
-            {t.measurements.deleteFailed}
+            {failed === "unreachable"
+              ? t.common.unreachable
+              : t.measurements.deleteFailed}
           </p>
         )}
         <AlertDialogFooter>

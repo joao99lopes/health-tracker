@@ -1,7 +1,8 @@
 "use client";
 
 import { useId, useMemo, useState } from "react";
-import { LineChartIcon, TableIcon } from "lucide-react";
+import { LineChartIcon, MaximizeIcon, TableIcon } from "lucide-react";
+import Link from "next/link";
 import dynamic from "next/dynamic";
 import { CHART_HEIGHT } from "@/components/charts/chart-size";
 import { PeriodSummary } from "@/components/charts/period-summary";
@@ -19,13 +20,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { metricViewSearch } from "@/lib/dashboard/metric-view";
 import type { DashboardView } from "@/lib/dashboard/view";
 import { summarizeSeries } from "@/lib/measurements/stats";
 import { useI18n } from "@/lib/i18n/context";
 import { formatMetricValue } from "@/lib/measurements/format";
-import { metricLabel } from "@/lib/measurements/messages";
-import { METRICS, isMetric, type Metric } from "@/lib/measurements/metrics";
-import type { Measurement } from "@/lib/measurements/queries";
+import { metricLabel, metricName } from "@/lib/measurements/messages";
+import {
+  METRICS,
+  isMetric,
+  type MeasurementSnapshot,
+  type Metric,
+} from "@/lib/measurements/metrics";
 import type { DirectionPreferences } from "@/lib/preferences/direction";
 import {
   MOVING_AVERAGE_WINDOWS,
@@ -104,7 +110,7 @@ export function EvolutionSection({
   view,
   onViewChange,
 }: {
-  measurements: Measurement[];
+  measurements: MeasurementSnapshot[];
   /** The reader's direction preference per metric; presentation only. */
   directions: DirectionPreferences;
   /** Fixed by the server for this request; see the note above. */
@@ -158,6 +164,14 @@ export function EvolutionSection({
     [measurements, secondaryMetric, period, now],
   );
 
+  // Carries the period and average over, so the page opens on the same view.
+  const metricSearch = metricViewSearch({
+    period,
+    range: null,
+    average: averageWindow,
+  });
+  const metricPageHref = `/metrics/${metric}${metricSearch === "" ? "" : `?${metricSearch}`}`;
+
   // The first reading is the current one when there is only one; showing it
   // twice would suggest a comparison that does not exist.
   const showFirst = series.first !== null && series.first !== series.current;
@@ -189,7 +203,7 @@ export function EvolutionSection({
               }}
             >
               <SelectTrigger id="chart-metric" className="w-full sm:w-44">
-                <SelectValue />
+                <SelectValue>{metricLabel(t, metric)}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {METRICS.map((option) => (
@@ -214,7 +228,7 @@ export function EvolutionSection({
               }}
             >
               <SelectTrigger id="chart-period" className="w-full sm:w-36">
-                <SelectValue />
+                <SelectValue>{t.periods[period]}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {PERIOD_KEYS.map((option) => (
@@ -238,7 +252,11 @@ export function EvolutionSection({
               }}
             >
               <SelectTrigger id="chart-average" className="w-full sm:w-32">
-                <SelectValue />
+                <SelectValue>
+                  {averageWindow === null
+                    ? t.charts.movingAverageOff
+                    : t.charts.movingAverageWindow(averageWindow)}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={OFF}>{t.charts.movingAverageOff}</SelectItem>
@@ -262,7 +280,11 @@ export function EvolutionSection({
               }}
             >
               <SelectTrigger id="chart-compare" className="w-full sm:w-44">
-                <SelectValue />
+                <SelectValue>
+                  {secondaryMetric === null
+                    ? t.charts.compareNone
+                    : metricLabel(t, secondaryMetric)}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={OFF}>{t.charts.compareNone}</SelectItem>
@@ -319,7 +341,15 @@ export function EvolutionSection({
                     max: formatMetricValue(metric, summary.max, language),
                   })}
               </p>
-              <div className="flex justify-end print:hidden">
+              <div className="flex flex-wrap justify-end gap-1 print:hidden">
+                {/* The metric on its own page: a full-width chart, a range
+                    of dates, and every reading with its change. */}
+                <Button asChild variant="ghost" size="sm">
+                  <Link href={metricPageHref}>
+                    <MaximizeIcon />
+                    {t.charts.openMetric(metricName(t, metric))}
+                  </Link>
+                </Button>
                 <Button
                   type="button"
                   variant="ghost"

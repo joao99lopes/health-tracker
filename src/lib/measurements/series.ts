@@ -36,6 +36,11 @@ export type SeriesPoint = {
 export type MetricSeries = {
   metric: Metric;
   period: PeriodKey;
+  /**
+   * The dates the reader picked, start inclusive and end exclusive, when the
+   * series covers a chosen range rather than a period counted back from now.
+   */
+  range: { from: Date; to: Date } | null;
   /** Ascending by time, and only where the metric was actually recorded. */
   points: SeriesPoint[];
   /** The last point of the period, or null when the period holds none. */
@@ -166,9 +171,40 @@ export function buildMetricSeries(
     (measurement) => measurement.measuredAt,
     now,
   );
+  return seriesOf(inPeriod, metric, period, null);
+}
 
+/**
+ * Every recorded value of one metric from `start` (inclusive) to `end`
+ * (exclusive), oldest first - a range the reader picked by date rather than
+ * one of the periods counted back from now.
+ *
+ * `period` is "all" here: nothing is counted back from now, and the range
+ * itself is carried in `range` for whatever labels the series.
+ */
+export function buildMetricSeriesBetween(
+  measurements: readonly MeasurementSnapshot[],
+  metric: Metric,
+  start: Date,
+  end: Date,
+): MetricSeries {
+  const from = start.getTime();
+  const to = end.getTime();
+  const inRange = sortByMeasuredAt(measurements).filter((measurement) => {
+    const at = measurement.measuredAt.getTime();
+    return at >= from && at < to;
+  });
+  return seriesOf(inRange, metric, "all", { from: start, to: end });
+}
+
+function seriesOf(
+  snapshots: readonly MeasurementSnapshot[],
+  metric: Metric,
+  period: PeriodKey,
+  range: MetricSeries["range"],
+): MetricSeries {
   const points: SeriesPoint[] = [];
-  for (const snapshot of inPeriod) {
+  for (const snapshot of snapshots) {
     const value = metricValue(snapshot, metric);
     // Absent is absent. Substituting a zero would draw a reading that was
     // never taken and would drag the axis down with it.
@@ -184,6 +220,7 @@ export function buildMetricSeries(
   return {
     metric,
     period,
+    range,
     points,
     current: points[points.length - 1] ?? null,
     previous: points[points.length - 2] ?? null,

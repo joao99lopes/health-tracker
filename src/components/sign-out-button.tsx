@@ -5,6 +5,7 @@ import { useState } from "react";
 import { LogOutIcon } from "lucide-react";
 import { signOutAction } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
+import { callServer } from "@/lib/client/server-call";
 import { useTranslations } from "@/lib/i18n/context";
 
 /**
@@ -21,7 +22,13 @@ export function SignOutButton() {
 
   async function handleSignOut() {
     setPending(true);
-    await signOutAction();
+    const result = await callServer(signOutAction);
+    if (result !== undefined) {
+      // No answer: the session cookie may still be there, so stay put and
+      // let the button be pressed again.
+      setPending(false);
+      return;
+    }
     // Replace so the signed-in page is not reachable with the back button.
     router.replace("/login");
     router.refresh();

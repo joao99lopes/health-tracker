@@ -32,6 +32,7 @@ import {
   validateNewPassword,
 } from "@/lib/auth/credentials";
 import { signOutAction } from "@/app/(auth)/actions";
+import { callServer } from "@/lib/client/server-call";
 import { useBrowserAuth, type AuthOutcome } from "@/lib/firebase/client";
 import { useTranslations } from "@/lib/i18n/context";
 import type { Dictionary } from "@/lib/i18n/dictionary";
@@ -177,7 +178,11 @@ function DeleteAccountDialog() {
   }
 
   async function signInAgain() {
-    await signOutAction();
+    if ((await callServer(signOutAction)) !== undefined) {
+      // No answer: still signed in here, so there is nowhere to go yet.
+      setState("failed");
+      return;
+    }
     router.replace("/login");
     router.refresh();
   }

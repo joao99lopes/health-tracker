@@ -21,7 +21,7 @@ import {
   formatMetricNumber,
   formatMetricValue,
 } from "@/lib/measurements/format";
-import { metricLabel } from "@/lib/measurements/messages";
+import { metricLabel, seriesWindowLabel } from "@/lib/measurements/messages";
 import type { Metric } from "@/lib/measurements/metrics";
 import {
   buildChartRows,
@@ -75,6 +75,8 @@ import { CHART_HEIGHT } from "@/components/charts/chart-size";
 
 /** Periods long enough for the year to matter on the axis. */
 const LONG_PERIODS: readonly PeriodKey[] = ["1y", "2y", "all"];
+/** A picked range longer than this carries the year on its axis too. */
+const LONG_RANGE_MS = 180 * 24 * 60 * 60 * 1000;
 
 /** Above this many readings the dots merge into the line; drop them. */
 const MAX_DOTS = 24;
@@ -217,7 +219,12 @@ export function MetricChart({
   );
   const hasSecondary = secondary !== null && secondary.points.length > 0;
 
-  const withYear = LONG_PERIODS.includes(series.period);
+  const withYear =
+    series.range === null
+      ? LONG_PERIODS.includes(series.period)
+      : series.range.to.getTime() - series.range.from.getTime() > LONG_RANGE_MS ||
+        series.range.from.getFullYear() !==
+          new Date(series.range.to.getTime() - 1).getFullYear();
   const only = rows.length === 1 ? rows[0] : undefined;
   const xDomain: [number, number] | [string, string] =
     only === undefined
@@ -267,7 +274,7 @@ export function MetricChart({
         className={CHART_HEIGHT}
         role="img"
         aria-describedby={describedBy}
-        aria-label={legend.map((item) => item.label).join(", ") + ` — ${t.periods[series.period]}`}
+        aria-label={legend.map((item) => item.label).join(", ") + ` — ${seriesWindowLabel(t, series, language)}`}
       >
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart

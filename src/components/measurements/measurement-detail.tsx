@@ -160,7 +160,7 @@ export function MeasurementDetail({
                   className="flex items-baseline justify-between gap-4"
                 >
                   <dt className="text-muted-foreground text-sm">
-                    {t.measurements.fields[field]}
+                    {t.measurements.fieldNames[field]}
                   </dt>
                   <dd className="text-right font-medium tabular-nums">
                     {value ?? (

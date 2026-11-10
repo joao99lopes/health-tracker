@@ -58,9 +58,9 @@ Cloudflare Tunnel is not configured. Production is LAN-only for now.
 
 The Pi never builds. Every push to `main` runs
 `.github/workflows/docker-arm64.yml`: lint, unit tests, both images built on a
-native arm64 runner, an end-to-end smoke test (`scripts/smoke-test.sh`), and
-only then a push to GHCR — `:migrate` first, then `:latest`, each also tagged
-with the commit SHA.
+native arm64 runner, an end-to-end smoke test (`scripts/smoke-test.sh`), the
+browser tests (`scripts/e2e.sh`), and only then a push to GHCR — `:migrate`
+first, then `:latest`, each also tagged with the commit SHA.
 
 ---
 

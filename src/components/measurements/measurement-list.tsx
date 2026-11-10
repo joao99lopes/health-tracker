@@ -167,7 +167,7 @@ export function MeasurementList({
                     scope="col"
                     className="px-5 py-3 text-right text-xs font-medium tracking-wide uppercase"
                   >
-                    {t.measurements.fields[field]}
+                    {t.measurements.fieldNames[field]}
                   </th>
                 ))}
                 <th

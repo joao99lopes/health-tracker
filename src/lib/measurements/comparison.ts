@@ -161,3 +161,34 @@ export function compareOverPeriod(
   );
   return compareLatestToFirst(inPeriod);
 }
+
+/** One reading of a metric and how it moved from the reading before it. */
+export type ReadingChange = {
+  at: Date;
+  value: number;
+  /** Against the previous reading of this metric; null for the very first. */
+  change: MetricComparison | null;
+};
+
+/**
+ * Every reading of one metric, most recent first, each with its change from
+ * the reading before it - wherever that one was, even outside a period the
+ * caller later narrows the list to, so the oldest row of a period still says
+ * how it moved.
+ */
+export function readingChanges(
+  measurements: readonly MeasurementSnapshot[],
+  metric: Metric,
+): ReadingChange[] {
+  const readings = readingsOf(sortByMeasuredAt(measurements), metric);
+  return readings
+    .map((reading, index) => {
+      const before = readings[index - 1];
+      return {
+        at: reading.at,
+        value: reading.value,
+        change: before ? compareReadings(metric, before, reading) : null,
+      };
+    })
+    .reverse();
+}

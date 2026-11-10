@@ -75,7 +75,7 @@ export function ReportControls({ period }: { period: PeriodKey }) {
           }}
         >
           <SelectTrigger id="report-period" className="w-40">
-            <SelectValue />
+            <SelectValue>{t.periods[period]}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             {PERIOD_KEYS.map((option) => (

@@ -3,7 +3,7 @@
 import { LocalDateTime } from "@/components/measurements/local-date-time";
 import { useI18n } from "@/lib/i18n/context";
 import { formatMetricValue } from "@/lib/measurements/format";
-import { metricLabel } from "@/lib/measurements/messages";
+import { metricLabel, seriesWindowLabel } from "@/lib/measurements/messages";
 import type { MetricSeries } from "@/lib/measurements/series";
 
 /**
@@ -41,7 +41,7 @@ export function SeriesTable({
     <div id={id} className="max-h-80 overflow-auto rounded-lg border">
       <table className="w-full text-sm">
         <caption className="sr-only">
-          {metricLabel(t, series.metric)} — {t.periods[series.period]}
+          {metricLabel(t, series.metric)} — {seriesWindowLabel(t, series, language)}
         </caption>
         <thead className="bg-muted/60 text-muted-foreground sticky top-0">
           <tr>

@@ -5,6 +5,7 @@ import {
   compareLatestToPrevious,
   compareOverPeriod,
   compareReadings,
+  readingChanges,
   type MetricComparison,
 } from "./comparison.ts";
 import type { MeasurementSnapshot } from "./metrics.ts";
@@ -200,5 +201,23 @@ test("a period where each metric has under two readings is not enough data", () 
       NOW,
     ),
     null,
+  );
+});
+
+test("each reading carries its change from the reading before it, newest first", () => {
+  const rows = readingChanges(
+    [
+      snapshot("2026-09-01T08:00:00.000Z", { weightKg: 80 }),
+      snapshot("2026-09-05T08:00:00.000Z", { bodyFatPercent: 20 }),
+      snapshot("2026-09-10T08:00:00.000Z", { weightKg: 79.5 }),
+    ],
+    "weightKg",
+  );
+  assert.deepEqual(
+    rows.map((row) => [row.value, row.change?.delta ?? null, row.change?.direction ?? null]),
+    [
+      [79.5, -0.5, "down"],
+      [80, null, null],
+    ],
   );
 });

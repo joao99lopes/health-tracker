@@ -3,7 +3,10 @@ import {
   MEASUREMENT_FIELD_SPECS,
   type MeasurementValueField,
 } from "@/lib/measurements/fields";
+import type { Language } from "@/lib/i18n/languages";
+import { formatDate } from "@/lib/measurements/format";
 import type { Metric } from "@/lib/measurements/metrics";
+import type { MetricSeries } from "@/lib/measurements/series";
 import type { MeasurementIssue } from "@/lib/measurements/validation";
 
 /**
@@ -42,6 +45,41 @@ export function metricLabel(t: Dictionary, metric: Metric): string {
     return t.measurements.waistToHeightRatio;
   }
   return t.measurements.fields[metric];
+}
+
+/**
+ * What a series covers, in words: a period's name ("3 months") or, for a
+ * range the reader picked, its first and last day ("1 Aug 2026 – 31 Aug
+ * 2026"). The range's end is exclusive, so the last day is the one before it.
+ */
+export function seriesWindowLabel(
+  t: Dictionary,
+  series: Pick<MetricSeries, "period" | "range">,
+  language: Language,
+): string {
+  if (series.range === null) {
+    return t.periods[series.period];
+  }
+  const lastDay = new Date(series.range.to.getTime() - 1);
+  return t.charts.rangeLabel(
+    formatDate(series.range.from, language),
+    formatDate(lastDay, language),
+  );
+}
+
+/**
+ * A metric's name without its unit, for a label whose value already carries
+ * the unit ("Weight" above "68.70 kg"). Where the number stands alone - an
+ * axis, a picker - `metricLabel` keeps the unit in the name.
+ */
+export function metricName(t: Dictionary, metric: Metric): string {
+  if (metric === "bmi") {
+    return t.measurements.bmi;
+  }
+  if (metric === "waistToHeightRatio") {
+    return t.measurements.waistToHeightRatio;
+  }
+  return t.measurements.fieldNames[metric];
 }
 
 /**

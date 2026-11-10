@@ -29,6 +29,7 @@ import {
   type SessionResult,
 } from "@/app/(auth)/actions";
 import { authErrorKey, type AuthErrorKey } from "@/lib/auth/rules";
+import { callServer } from "@/lib/client/server-call";
 import { useFirebaseConfig } from "@/lib/firebase/config-context";
 
 /**
@@ -291,7 +292,14 @@ export function useBrowserAuth(): BrowserAuth {
           return fromSession(await createSessionAction(await user.getIdToken()));
         }),
 
-      deleteAccount: async () => fromSession(await deleteAccountAction()),
+      deleteAccount: async () => {
+        const result = await callServer(deleteAccountAction);
+        // No answer means nothing is known to be deleted; say it was the
+        // connection, not the account, that failed.
+        return result.status === "unreachable"
+          ? { status: "error", key: "network" }
+          : fromSession(result);
+      },
     } satisfies BrowserAuth;
   }, [config]);
 }

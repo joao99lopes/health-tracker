@@ -46,7 +46,7 @@ export function HistoryControls({ query }: { query: HistoryQuery }) {
         }}
       >
         <SelectTrigger id="history-period" className="w-40">
-          <SelectValue />
+          <SelectValue>{t.periods[query.period]}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           {PERIOD_KEYS.map((option) => (

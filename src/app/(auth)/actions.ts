@@ -7,6 +7,11 @@ import { adminAuth } from "@/lib/firebase/admin";
 import { getSessionUser } from "@/lib/auth/session";
 import { normalizeEmail } from "@/lib/auth/email";
 import {
+  LANGUAGE_COOKIE,
+  LANGUAGE_COOKIE_MAX_AGE_SECONDS,
+} from "@/lib/i18n/languages";
+import { getProfileLanguage } from "@/lib/profile/queries";
+import {
   SESSION_COOKIE,
   SESSION_MAX_AGE_SECONDS,
   decideAccountLink,
@@ -142,7 +147,23 @@ export async function createSessionAction(idToken: string): Promise<SessionResul
 
 /** Ends this browser's session. Other devices are unaffected. */
 export async function signOutAction(): Promise<void> {
-  (await cookies()).delete(SESSION_COOKIE);
+  const jar = await cookies();
+  // Keep the language the reader chose, so the sign-in page that follows is
+  // not suddenly in the browser's language instead. Best effort: signing out
+  // must never fail over a display preference.
+  try {
+    const user = await getSessionUser();
+    const language = user ? await getProfileLanguage(user.id) : null;
+    if (language) {
+      jar.set(LANGUAGE_COOKIE, language, {
+        ...sessionCookieOptions(env.APP_URL),
+        maxAge: LANGUAGE_COOKIE_MAX_AGE_SECONDS,
+      });
+    }
+  } catch {
+    // The session is ended below regardless.
+  }
+  jar.delete(SESSION_COOKIE);
 }
 
 /**

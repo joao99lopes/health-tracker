@@ -6,6 +6,7 @@ import {
   MEASUREMENT_VALUE_FIELDS,
   type MeasurementValueField,
 } from "@/lib/measurements/fields";
+import type { MeasurementSnapshot } from "@/lib/measurements/metrics";
 import type { ParsedMeasurement } from "@/lib/measurements/validation";
 
 /**
@@ -84,6 +85,47 @@ export async function listMeasurements(
     orderBy: { measuredAt: "desc" },
   });
   return rows.map(toMeasurement);
+}
+
+/**
+ * Every measurement of one user reduced to what charts and comparisons use:
+ * the instant, the values and the height. Most recent first.
+ *
+ * The dashboard switches period and metric in the browser without asking
+ * the server again (see docs/HANDOFF.md), so it needs the whole history -
+ * but not each row's id or free-text note, which are most of a row once
+ * notes are used. They are left in the database: less for the Pi to read
+ * and serialise, and less for the phone to download and parse.
+ */
+export async function listMeasurementSnapshots(
+  userId: string,
+): Promise<MeasurementSnapshot[]> {
+  const rows = await prisma.measurement.findMany({
+    where: { userId },
+    orderBy: { measuredAt: "desc" },
+    select: {
+      measuredAt: true,
+      heightCmAtMeasurement: true,
+      weightKg: true,
+      bodyFatPercent: true,
+      hydrationPercent: true,
+      musclePercent: true,
+      boneMassKg: true,
+      visceralFat: true,
+      abdominalCircumferenceCm: true,
+    },
+  });
+  return rows.map((row) => ({
+    measuredAt: row.measuredAt,
+    heightCmAtMeasurement: row.heightCmAtMeasurement.toNumber(),
+    weightKg: toNumber(row.weightKg),
+    bodyFatPercent: toNumber(row.bodyFatPercent),
+    hydrationPercent: toNumber(row.hydrationPercent),
+    musclePercent: toNumber(row.musclePercent),
+    boneMassKg: toNumber(row.boneMassKg),
+    visceralFat: row.visceralFat,
+    abdominalCircumferenceCm: toNumber(row.abdominalCircumferenceCm),
+  }));
 }
 
 /**
