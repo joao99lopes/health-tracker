@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { ComparisonCard } from "@/components/dashboard/comparison-card";
 import {
   Select,
@@ -14,7 +14,6 @@ import { compareOverPeriod } from "@/lib/measurements/comparison";
 import type { Measurement } from "@/lib/measurements/queries";
 import type { DirectionPreferences } from "@/lib/preferences/direction";
 import {
-  DEFAULT_PERIOD,
   PERIOD_KEYS,
   isPeriodKey,
   type PeriodKey,
@@ -40,14 +39,19 @@ export function PeriodComparisonCard({
   measurements,
   directions,
   now,
+  period,
+  onPeriodChange,
 }: {
   measurements: Measurement[];
   /** The reader's direction preference per metric; presentation only. */
   directions: DirectionPreferences;
   now: Date;
+  /** Owned by the dashboard, which keeps it in the address. */
+  period: PeriodKey;
+  onPeriodChange: (period: PeriodKey) => void;
 }) {
   const { t } = useI18n();
-  const [period, setPeriod] = useState<PeriodKey>(DEFAULT_PERIOD);
+  const setPeriod = onPeriodChange;
 
   const comparison = useMemo(
     () => compareOverPeriod(measurements, period, now),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { LineChartIcon } from "lucide-react";
 import { MetricChart } from "@/components/charts/metric-chart";
 import { EmptyState } from "@/components/empty-state";
@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { DashboardView } from "@/lib/dashboard/view";
 import { useI18n } from "@/lib/i18n/context";
 import { formatMetricValue } from "@/lib/measurements/format";
 import { metricLabel } from "@/lib/measurements/messages";
@@ -32,7 +33,6 @@ import {
   type SeriesPoint,
 } from "@/lib/measurements/series";
 import {
-  DEFAULT_PERIOD,
   PERIOD_KEYS,
   isPeriodKey,
   type PeriodKey,
@@ -48,9 +48,6 @@ import {
  * let the server pass and the hydration pass disagree about whether a
  * measurement is still inside the period, which React reports as a mismatch.
  */
-
-/** The metric shown before the user picks one. */
-const DEFAULT_METRIC: Metric = "weightKg";
 
 /** Select value for "no moving average" and "no comparison". */
 const OFF = "off";
@@ -87,20 +84,30 @@ export function EvolutionSection({
   measurements,
   directions,
   now,
+  view,
+  onViewChange,
 }: {
   measurements: Measurement[];
   /** The reader's direction preference per metric; presentation only. */
   directions: DirectionPreferences;
   /** Fixed by the server for this request; see the note above. */
   now: Date;
+  /**
+   * What to show, owned by the dashboard (and kept in its address). Both
+   * extras default to off: the default chart is the readings and nothing
+   * else.
+   */
+  view: Pick<DashboardView, "metric" | "period" | "average" | "compare">;
+  onViewChange: (change: Partial<DashboardView>) => void;
 }) {
   const { t } = useI18n();
-  const [metric, setMetric] = useState<Metric>(DEFAULT_METRIC);
-  const [period, setPeriod] = useState<PeriodKey>(DEFAULT_PERIOD);
-  // Both extras start off: the default chart is the readings and nothing else.
-  const [averageWindow, setAverageWindow] =
-    useState<MovingAverageWindow | null>(null);
-  const [compareMetric, setCompareMetric] = useState<Metric | null>(null);
+  const { metric, period, average: averageWindow, compare: compareMetric } = view;
+  const setMetric = (value: Metric) => onViewChange({ metric: value });
+  const setPeriod = (value: PeriodKey) => onViewChange({ period: value });
+  const setAverageWindow = (value: MovingAverageWindow | null) =>
+    onViewChange({ average: value });
+  const setCompareMetric = (value: Metric | null) =>
+    onViewChange({ compare: value });
   // Comparing a metric with itself says nothing; picking the compared one as
   // the main metric drops the comparison.
   const secondaryMetric = compareMetric === metric ? null : compareMetric;
@@ -132,7 +139,12 @@ export function EvolutionSection({
   const showFirst = series.first !== null && series.first !== series.current;
 
   return (
-    <section className="flex flex-col gap-4">
+    <section
+      id="evolution"
+      // Focusable so a metric card can move the reader here, not only scroll.
+      tabIndex={-1}
+      className="flex scroll-mt-20 flex-col gap-4 outline-none"
+    >
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <SectionHeader
           title={t.charts.title}

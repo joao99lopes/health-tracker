@@ -67,6 +67,7 @@ export const pt: Dictionary = {
     perMetricHint: "Cada métrica entre os seus próprios registos.",
     notEnoughData: "Ainda não há dados suficientes.",
     viewAll: "Todas as medições",
+    showInChart: (metric: string) => `Mostrar ${metric} no gráfico`,
   },
 
   periods: {

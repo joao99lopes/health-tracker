@@ -4,6 +4,7 @@ import { AddMeasurementFab } from "@/components/measurements/add-measurement-fab
 import { ProfileRequiredCard } from "@/components/measurements/profile-required-card";
 import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth/session";
+import { parseDashboardView } from "@/lib/dashboard/view";
 import { getTranslations } from "@/lib/i18n/server";
 import { listMeasurements } from "@/lib/measurements/queries";
 import { DEFAULT_DIRECTION_PREFERENCES } from "@/lib/preferences/direction";
@@ -20,9 +21,12 @@ export async function generateMetadata(): Promise<Metadata> {
  * Navigation to Measurements and Profile, and signing out, live in the app
  * shell around this page.
  */
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: PageProps<"/">) {
   // Authoritative check, and the only id the queries below are scoped by.
   const user = await requireUser();
+  // The chart and comparison choices the address carries, so the server
+  // renders the same view the browser will show.
+  const initialView = parseDashboardView(await searchParams);
   const [measurements, profile, { t }] = await Promise.all([
     listMeasurements(user.id),
     getProfile(user.id),
@@ -50,6 +54,7 @@ export default async function DashboardPage() {
           // One instant for the whole request: the period filter then means
           // the same thing on the server and after hydration.
           now={new Date()}
+          initialView={initialView}
         />
       )}
 

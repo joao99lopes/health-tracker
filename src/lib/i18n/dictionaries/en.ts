@@ -68,6 +68,7 @@ export const en = {
     perMetricHint: "Each metric between its own readings.",
     notEnoughData: "Not enough data yet.",
     viewAll: "All measurements",
+    showInChart: (metric: string) => `Show ${metric} in the chart`,
   },
 
   periods: {

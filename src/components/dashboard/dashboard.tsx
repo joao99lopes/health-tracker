@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   ArrowDownIcon,
   ArrowRightIcon,
@@ -23,6 +24,10 @@ import {
   isAdultBmiApplicable,
 } from "@/lib/health/bmi-classification";
 import { classifyWaistToHeightRatio } from "@/lib/health/waist-to-height-classification";
+import {
+  dashboardViewSearch,
+  type DashboardView,
+} from "@/lib/dashboard/view";
 import { useI18n } from "@/lib/i18n/context";
 import {
   compareLatestToFirst,
@@ -115,8 +120,13 @@ function MetricCard({
   change,
   direction,
   category,
+  selected,
+  onSelect,
 }: {
   reading: MetricReading;
+  /** Whether this metric is the one the chart shows. */
+  selected: boolean;
+  onSelect: () => void;
   /** Against the previous measurement, or null when there is none. */
   change: MetricComparison | null;
   /** The reader's preference for this metric; presentation only. */
@@ -134,7 +144,23 @@ function MetricCard({
       : TONE_TEXT_CLASS[changeTone(direction, change.direction)];
 
   return (
-    <Card size="sm" className="justify-between">
+    <Card
+      size="sm"
+      className={cn(
+        "relative justify-between",
+        selected && "ring-primary/60 ring-2",
+      )}
+    >
+      {/* The whole card opens this metric in the chart. A button laid over
+          the card rather than around it: a button may only hold phrasing
+          content, and the card's text stays readable as text. */}
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-pressed={selected}
+        aria-label={t.dashboard.showInChart(metricLabel(t, reading.metric))}
+        className="hover:bg-foreground/[0.03] focus-visible:ring-ring/50 absolute inset-0 z-10 rounded-[inherit] outline-none focus-visible:ring-3"
+      />
       <CardContent className="flex flex-col gap-1.5">
         <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
           <MetricIcon className="text-primary size-3.5 shrink-0" aria-hidden />
@@ -193,6 +219,7 @@ export function Dashboard({
   birthDate,
   directions,
   now,
+  initialView,
 }: {
   measurements: Measurement[];
   /** From the profile, for the age the WHO BMI bands are defined against. */
@@ -204,8 +231,35 @@ export function Dashboard({
   directions: DirectionPreferences;
   /** Fixed by the server for this request, so period filtering is stable. */
   now: Date;
+  /** What the address asked for; the dashboard owns it from here on. */
+  initialView: DashboardView;
 }) {
   const { t, language } = useI18n();
+  const [view, setView] = useState(initialView);
+  const updateView = (change: Partial<DashboardView>) =>
+    setView((current) => ({ ...current, ...change }));
+
+  // Keep the address in step, so a reload or the back button lands on the
+  // same chart. `replaceState` rather than a navigation: nothing needs to be
+  // fetched again, and the Pi is spared a server render per click.
+  useEffect(() => {
+    const search = dashboardViewSearch(view);
+    const url = search === "" ? window.location.pathname : `?${search}`;
+    window.history.replaceState(null, "", url);
+  }, [view]);
+
+  /** A metric card or the BMI opens that metric in the chart. */
+  const showInChart = (metric: Metric) => {
+    updateView({ metric });
+    const section = document.getElementById("evolution");
+    section?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+      block: "start",
+    });
+    section?.focus({ preventScroll: true });
+  };
 
   const latest = latestMeasurement(measurements);
   if (latest === null) {
@@ -256,7 +310,14 @@ export function Dashboard({
           </div>
 
           {bmi !== null && (
-            <div className="flex flex-col gap-1 sm:items-end">
+            <div className="relative flex flex-col gap-1 sm:items-end">
+              <button
+                type="button"
+                onClick={() => showInChart("bmi")}
+                aria-pressed={view.metric === "bmi"}
+                aria-label={t.dashboard.showInChart(t.measurements.bmi)}
+                className="hover:bg-foreground/[0.03] focus-visible:ring-ring/50 absolute -inset-2 z-10 rounded-xl outline-none focus-visible:ring-3"
+              />
               <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium tracking-wide uppercase">
                 <BmiIcon
                   className="text-primary size-3.5 shrink-0"
@@ -290,6 +351,8 @@ export function Dashboard({
                 change={changes.get(reading.metric) ?? null}
                 direction={directions[reading.metric]}
                 category={readingCategory(reading)}
+                selected={view.metric === reading.metric}
+                onSelect={() => showInChart(reading.metric)}
               />
             ))}
           </div>
@@ -300,6 +363,8 @@ export function Dashboard({
         measurements={measurements}
         directions={directions}
         now={now}
+        view={view}
+        onViewChange={updateView}
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -313,6 +378,8 @@ export function Dashboard({
           measurements={measurements}
           directions={directions}
           now={now}
+          period={view.comparePeriod}
+          onPeriodChange={(comparePeriod) => updateView({ comparePeriod })}
         />
       </div>
 
