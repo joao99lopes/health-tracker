@@ -34,6 +34,7 @@ import {
 import type { PeriodKey } from "@/lib/periods/periods";
 import type { MetricDirection } from "@/lib/preferences/direction";
 import { DIRECTION_CHART_COLOR } from "@/components/tone";
+import { CHART_HEIGHT } from "@/components/charts/chart-size";
 
 /**
  * One metric plotted over time, optionally with its moving average and a
@@ -88,8 +89,6 @@ const MAX_DOTS = 24;
  */
 const SINGLE_POINT_PADDING_MS = 12 * 60 * 60 * 1000;
 
-/** One height, used by the chart and by the box that stands in for it. */
-const CHART_HEIGHT = "h-60 w-full sm:h-72 lg:h-80";
 
 /** The comparison line's colour: outside the direction palette on purpose. */
 const SECONDARY_COLOR = "var(--chart-3)";

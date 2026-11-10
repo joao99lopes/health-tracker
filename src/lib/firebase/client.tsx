@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { useMemo } from "react";
 import { getApp, getApps, initializeApp } from "@firebase/app";
 import {
   GoogleAuthProvider,
@@ -29,6 +29,7 @@ import {
   type SessionResult,
 } from "@/app/(auth)/actions";
 import { authErrorKey, type AuthErrorKey } from "@/lib/auth/rules";
+import { useFirebaseConfig } from "@/lib/firebase/config-context";
 
 /**
  * Firebase Auth in the browser.
@@ -43,22 +44,6 @@ import { authErrorKey, type AuthErrorKey } from "@/lib/auth/rules";
  * The config arrives from the server at run time (see the root layout), so
  * CI builds one image for any Firebase project.
  */
-
-const FirebaseConfigContext = createContext<FirebaseWebConfig | null>(null);
-
-export function FirebaseProvider({
-  config,
-  children,
-}: {
-  config: FirebaseWebConfig;
-  children: ReactNode;
-}) {
-  return (
-    <FirebaseConfigContext.Provider value={config}>
-      {children}
-    </FirebaseConfigContext.Provider>
-  );
-}
 
 const APP_NAME = "health-tracker";
 
@@ -198,7 +183,7 @@ async function withFreshSignIn(
 }
 
 export function useBrowserAuth(): BrowserAuth {
-  const config = useContext(FirebaseConfigContext);
+  const config = useFirebaseConfig();
   if (config === null) {
     throw new Error("useBrowserAuth needs a FirebaseProvider above it.");
   }

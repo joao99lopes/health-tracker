@@ -2,7 +2,8 @@
 
 import { useId, useMemo, useState } from "react";
 import { LineChartIcon, TableIcon } from "lucide-react";
-import { MetricChart } from "@/components/charts/metric-chart";
+import dynamic from "next/dynamic";
+import { CHART_HEIGHT } from "@/components/charts/chart-size";
 import { PeriodSummary } from "@/components/charts/period-summary";
 import { SeriesTable } from "@/components/charts/series-table";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,18 @@ import {
  * let the server pass and the hydration pass disagree about whether a
  * measurement is still inside the period, which React reports as a mismatch.
  */
+
+/**
+ * Recharts is most of the dashboard's JavaScript (about 110 KB gzipped). It
+ * is fetched only when there is a line to draw - not for an account with no
+ * readings, a period with none, or the table view - and the chart was never
+ * server-rendered anyway (it needs the reader's time zone), so nothing is
+ * lost by not rendering it on the server.
+ */
+const MetricChart = dynamic(
+  () => import("@/components/charts/metric-chart").then((m) => m.MetricChart),
+  { ssr: false, loading: () => <div className={CHART_HEIGHT} aria-hidden /> },
+);
 
 /** Select value for "no moving average" and "no comparison". */
 const OFF = "off";

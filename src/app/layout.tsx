@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { env } from "@/env";
-import { FirebaseProvider } from "@/lib/firebase/client";
+import { FirebaseProvider } from "@/lib/firebase/config-context";
 import { I18nProvider } from "@/lib/i18n/context";
 import { resolveLanguage } from "@/lib/i18n/server";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme/theme";

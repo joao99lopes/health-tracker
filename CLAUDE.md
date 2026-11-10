@@ -335,7 +335,9 @@ How it fits together:
   entry points are imported, never the umbrella `firebase` package, so
   Firestore and gRPC stay out of both bundles. The web config is read at run
   time and handed to the browser by the root layout: one image fits any
-  Firebase project.
+  Firebase project. The layout's provider lives in
+  `src/lib/firebase/config-context.tsx`, apart from the SDK, so pages that
+  never sign anyone in do not download Firebase Auth - keep it that way.
 - `src/proxy.ts` — optimistic only: checks that a session *cookie exists*,
   nothing more. It is not access control, and it never redirects *away* from
   an auth page (see `src/lib/auth/routing.ts`).
