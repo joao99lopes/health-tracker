@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeftIcon } from "lucide-react";
+import { CheckCircle2Icon, ChevronLeftIcon } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { MeasurementDetail } from "@/components/measurements/measurement-detail";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -19,8 +20,11 @@ import { getProfile } from "@/lib/profile/queries";
  */
 export default async function MeasurementPage({
   params,
+  searchParams,
 }: PageProps<"/measurements/[id]">) {
   const { id } = await params;
+  // Set by the form after a successful save; anything else is ignored.
+  const { saved } = await searchParams;
   const user = await requireUser();
 
   const [measurement, profile, { t }] = await Promise.all([
@@ -44,6 +48,17 @@ export default async function MeasurementPage({
         </Button>
         <PageHeader title={t.measurements.detailTitle} />
       </div>
+
+      {(saved === "created" || saved === "updated") && (
+        <Alert role="status">
+          <CheckCircle2Icon className="text-primary" />
+          <AlertDescription>
+            {saved === "created"
+              ? t.measurements.created
+              : t.measurements.updated}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <MeasurementDetail
         measurement={measurement}

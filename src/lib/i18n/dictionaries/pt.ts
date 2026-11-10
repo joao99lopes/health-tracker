@@ -19,7 +19,6 @@ export const pt: Dictionary = {
     edit: "Editar",
     delete: "Eliminar",
     deleting: "A eliminar…",
-    back: "Voltar",
     notRecorded: "Não registado",
     version: (version: string) => `Versão ${version}`,
     versionUnknown: "build de desenvolvimento",
@@ -333,7 +332,6 @@ export const pt: Dictionary = {
     howToMeasure: "Como medir",
     abdominalCircumferenceHelp:
       "Meça com uma fita métrica, de pé e relaxado, no final de uma expiração normal. Mantenha a fita horizontal, justa mas sem apertar a pele. Meça sempre no mesmo local para tornar os valores comparáveis.",
-    view: "Ver",
     actions: "Ações",
     created: "Medição adicionada.",
     updated: "Medição guardada.",

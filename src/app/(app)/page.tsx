@@ -32,16 +32,20 @@ export default async function DashboardPage() {
 
       {profile === null && <ProfileRequiredCard />}
 
-      <Dashboard
-        measurements={measurements}
-        birthDate={profile?.birthDate ?? null}
-        // Presentation only. Without a profile nobody has stated a
-        // preference, so the page reads exactly as it did before.
-        directions={profile?.directions ?? DEFAULT_DIRECTION_PREFERENCES}
-        // One instant for the whole request: the period filter then means the
-        // same thing on the server and after hydration.
-        now={new Date()}
-      />
+      {/* Without a profile and without data, the card above already says
+          what is missing; a second "nothing here yet" would only repeat it. */}
+      {(profile !== null || measurements.length > 0) && (
+        <Dashboard
+          measurements={measurements}
+          birthDate={profile?.birthDate ?? null}
+          // Presentation only. Without a profile nobody has stated a
+          // preference, so the page reads exactly as it did before.
+          directions={profile?.directions ?? DEFAULT_DIRECTION_PREFERENCES}
+          // One instant for the whole request: the period filter then means
+          // the same thing on the server and after hydration.
+          now={new Date()}
+        />
+      )}
 
       {profile !== null && <AddMeasurementFab />}
     </div>

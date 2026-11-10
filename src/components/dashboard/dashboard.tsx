@@ -12,6 +12,7 @@ import { EvolutionSection } from "@/components/charts/evolution-section";
 import { ComparisonCard } from "@/components/dashboard/comparison-card";
 import { PeriodComparisonCard } from "@/components/dashboard/period-comparison-card";
 import { EmptyState } from "@/components/empty-state";
+import { AddMeasurementButton } from "@/components/measurements/add-measurement-fab";
 import { LocalDateTime } from "@/components/measurements/local-date-time";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -215,6 +216,7 @@ export function Dashboard({
             icon={LineChartIcon}
             title={t.dashboard.empty}
             description={t.dashboard.emptyDescription}
+            action={<AddMeasurementButton />}
           />
         </CardContent>
       </Card>

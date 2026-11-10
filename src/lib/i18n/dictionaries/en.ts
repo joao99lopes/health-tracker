@@ -20,7 +20,6 @@ export const en = {
     edit: "Edit",
     delete: "Delete",
     deleting: "Deleting…",
-    back: "Back",
     notRecorded: "Not recorded",
     version: (version: string) => `Version ${version}`,
     versionUnknown: "development build",
@@ -335,7 +334,6 @@ export const en = {
     howToMeasure: "How to measure",
     abdominalCircumferenceHelp:
       "Measure with a tape measure while standing relaxed, at the end of a normal exhalation. Keep the tape horizontal and snug without compressing the skin. Measure at the same location each time so values remain comparable.",
-    view: "View",
     actions: "Actions",
     created: "Measurement added.",
     updated: "Measurement saved.",

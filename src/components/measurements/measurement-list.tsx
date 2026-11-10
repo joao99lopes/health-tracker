@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { PencilIcon, ScaleIcon } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
+import { AddMeasurementButton } from "@/components/measurements/add-measurement-fab";
 import { DeleteMeasurementDialog } from "@/components/measurements/delete-measurement-dialog";
 import { LocalDateTime } from "@/components/measurements/local-date-time";
 import { Button } from "@/components/ui/button";
@@ -61,6 +62,7 @@ export function MeasurementList({
             icon={ScaleIcon}
             title={t.measurements.empty}
             description={t.measurements.emptyDescription}
+            action={<AddMeasurementButton />}
           />
         </CardContent>
       </Card>

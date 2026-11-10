@@ -25,7 +25,9 @@ export default async function MeasurementsPage() {
 
       {profile === null && <ProfileRequiredCard />}
 
-      <MeasurementList measurements={measurements} />
+      {(profile !== null || measurements.length > 0) && (
+        <MeasurementList measurements={measurements} />
+      )}
 
       {profile !== null && <AddMeasurementFab />}
     </div>

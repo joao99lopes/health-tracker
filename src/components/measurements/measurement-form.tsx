@@ -147,7 +147,11 @@ export function MeasurementForm({
       return;
     }
 
-    router.push(`/measurements/${result.id}`);
+    // The detail page confirms what happened; `replace` keeps the form out
+    // of the history so "back" does not reopen a form that was submitted.
+    router.replace(
+      `/measurements/${result.id}?saved=${editing ? "updated" : "created"}`,
+    );
     router.refresh();
   }
 
