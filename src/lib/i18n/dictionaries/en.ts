@@ -303,6 +303,9 @@ export const en = {
     title: "Measurements",
     description: "Everything you have recorded, most recent first.",
     empty: "No measurements yet.",
+    emptyPeriod: "No measurements in this period.",
+    showMore: "Show more",
+    hasNote: "Has a note",
     emptyDescription:
       "Recorded measurements are listed here, most recent first.",
     add: "Add measurement",
@@ -347,6 +350,16 @@ export const en = {
     deleteTitle: "Delete this measurement?",
     deleteDescription: (when: string) =>
       `The measurement of ${when} will be permanently deleted. This cannot be undone.`,
+    /** Field names without units, where the value beside them has one. */
+    fieldsShort: {
+      weightKg: "Weight",
+      bodyFatPercent: "Body fat",
+      hydrationPercent: "Hydration",
+      musclePercent: "Muscle",
+      boneMassKg: "Bone mass",
+      visceralFat: "Visceral fat",
+      abdominalCircumferenceCm: "Waist",
+    },
     fields: {
       weightKg: "Weight (kg)",
       bodyFatPercent: "Body fat (%)",

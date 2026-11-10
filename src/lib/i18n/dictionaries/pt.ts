@@ -301,6 +301,9 @@ export const pt: Dictionary = {
     title: "Medições",
     description: "Tudo o que registou, da mais recente para a mais antiga.",
     empty: "Ainda não há medições.",
+    emptyPeriod: "Não há medições neste período.",
+    showMore: "Mostrar mais",
+    hasNote: "Tem uma nota",
     emptyDescription:
       "As medições registadas são listadas aqui, da mais recente para a mais antiga.",
     add: "Adicionar medição",
@@ -344,6 +347,15 @@ export const pt: Dictionary = {
     deleteTitle: "Eliminar esta medição?",
     deleteDescription: (when: string) =>
       `A medição de ${when} será eliminada definitivamente. Esta ação não pode ser anulada.`,
+    fieldsShort: {
+      weightKg: "Peso",
+      bodyFatPercent: "Gordura",
+      hydrationPercent: "Hidratação",
+      musclePercent: "Músculo",
+      boneMassKg: "Massa óssea",
+      visceralFat: "Gord. visceral",
+      abdominalCircumferenceCm: "Cintura",
+    },
     fields: {
       weightKg: "Peso (kg)",
       bodyFatPercent: "Gordura corporal (%)",

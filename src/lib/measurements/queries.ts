@@ -86,6 +86,37 @@ export async function listMeasurements(
   return rows.map(toMeasurement);
 }
 
+/**
+ * One page of the history, most recent first: at most `limit` rows from
+ * `since` on (everything when null), and whether older rows remain.
+ *
+ * One row more than asked for is read to answer "is there more" without a
+ * second count query.
+ */
+export async function listMeasurementsPage(
+  userId: string,
+  { since, limit }: { since: Date | null; limit: number },
+): Promise<{ measurements: Measurement[]; hasMore: boolean }> {
+  const rows = await prisma.measurement.findMany({
+    where: { userId, ...(since ? { measuredAt: { gte: since } } : {}) },
+    orderBy: { measuredAt: "desc" },
+    take: limit + 1,
+  });
+  return {
+    measurements: rows.slice(0, limit).map(toMeasurement),
+    hasMore: rows.length > limit,
+  };
+}
+
+/** Whether this user has recorded anything at all. */
+export async function hasMeasurements(userId: string): Promise<boolean> {
+  const row = await prisma.measurement.findFirst({
+    where: { userId },
+    select: { id: true },
+  });
+  return row !== null;
+}
+
 /** How far back the form looks for "the last value" of each field. */
 const RECENT_FOR_FORM = 200;
 
