@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CheckCircle2Icon, ChevronLeftIcon } from "lucide-react";
@@ -10,6 +11,11 @@ import { ageInYears } from "@/lib/health/age";
 import { getTranslations } from "@/lib/i18n/server";
 import { getMeasurement } from "@/lib/measurements/queries";
 import { getProfile } from "@/lib/profile/queries";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslations();
+  return { title: t.measurements.detailTitle };
+}
 
 /**
  * One measurement in full.

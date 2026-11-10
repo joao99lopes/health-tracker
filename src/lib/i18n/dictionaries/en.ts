@@ -30,7 +30,7 @@ export const en = {
     measurements: "Measurements",
     profile: "Profile",
     primary: "Main",
-    account: "Account",
+    skipToContent: "Skip to content",
   },
 
   theme: {

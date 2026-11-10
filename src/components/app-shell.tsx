@@ -25,6 +25,13 @@ export async function AppShell({
 
   return (
     <div className="bg-background text-foreground flex min-h-dvh flex-col">
+      {/* First stop for a keyboard: past the header and its links. */}
+      <a
+        href="#main"
+        className="bg-primary text-primary-foreground sr-only z-50 rounded-lg px-4 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+      >
+        {t.nav.skipToContent}
+      </a>
       <header className="bg-background/85 border-border sticky top-0 z-30 border-b backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-2 px-4 sm:h-16 sm:gap-4 sm:px-6">
           <span className="flex items-center gap-2">
@@ -54,7 +61,12 @@ export async function AppShell({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-28 sm:px-6 sm:pt-10 sm:pb-16">
+      <main
+        id="main"
+        // Focusable only by the skip link, so focus really moves past the
+        // header instead of staying on it.
+        tabIndex={-1}
+        className="outline-none mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-28 sm:px-6 sm:pt-10 sm:pb-16">
         {children}
       </main>
 

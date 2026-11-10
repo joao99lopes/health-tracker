@@ -1,9 +1,15 @@
+import type { Metadata } from "next";
 import { MeasurementForm } from "@/components/measurements/measurement-form";
 import { ProfileRequiredCard } from "@/components/measurements/profile-required-card";
 import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth/session";
 import { getTranslations } from "@/lib/i18n/server";
 import { getProfile } from "@/lib/profile/queries";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslations();
+  return { title: t.measurements.addTitle };
+}
 
 /**
  * Adding a measurement.

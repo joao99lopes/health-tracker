@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { AddMeasurementFab } from "@/components/measurements/add-measurement-fab";
 import { MeasurementList } from "@/components/measurements/measurement-list";
 import { ProfileRequiredCard } from "@/components/measurements/profile-required-card";
@@ -6,6 +7,11 @@ import { requireUser } from "@/lib/auth/session";
 import { getTranslations } from "@/lib/i18n/server";
 import { listMeasurements } from "@/lib/measurements/queries";
 import { getProfile } from "@/lib/profile/queries";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslations();
+  return { title: t.measurements.title };
+}
 
 export default async function MeasurementsPage() {
   // Authoritative check, and the only id the queries below are scoped by.

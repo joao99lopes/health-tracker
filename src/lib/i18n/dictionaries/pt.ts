@@ -29,7 +29,7 @@ export const pt: Dictionary = {
     measurements: "Medições",
     profile: "Perfil",
     primary: "Principal",
-    account: "Conta",
+    skipToContent: "Saltar para o conteúdo",
   },
 
   theme: {

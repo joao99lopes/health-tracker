@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Dashboard } from "@/components/dashboard/dashboard";
 import { AddMeasurementFab } from "@/components/measurements/add-measurement-fab";
 import { ProfileRequiredCard } from "@/components/measurements/profile-required-card";
@@ -7,6 +8,11 @@ import { getTranslations } from "@/lib/i18n/server";
 import { listMeasurements } from "@/lib/measurements/queries";
 import { DEFAULT_DIRECTION_PREFERENCES } from "@/lib/preferences/direction";
 import { getProfile } from "@/lib/profile/queries";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getTranslations();
+  return { title: t.dashboard.title };
+}
 
 /**
  * The page a signed-in user lands on.

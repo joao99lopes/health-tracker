@@ -18,7 +18,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Health Tracker",
+  // Each page names itself (`generateMetadata`, in the reader's language), so
+  // tabs, history and screen readers can tell the pages apart.
+  title: { default: "Health Tracker", template: "%s · Health Tracker" },
   description: "Personal body measurement tracking.",
 };
 
