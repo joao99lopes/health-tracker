@@ -158,6 +158,12 @@ export function DataSection({
             type="file"
             accept=".csv,text/csv"
             className="sr-only"
+            // The visible button below is the control; this input is only
+            // the browser's file picker behind it, so it is kept out of the
+            // tab order and the accessibility tree rather than announced as
+            // a second, unlabelled control.
+            tabIndex={-1}
+            aria-hidden
             onChange={handleFile}
           />
           {(state.step === "idle" ||

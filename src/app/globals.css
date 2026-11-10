@@ -75,7 +75,8 @@
   --card-foreground: oklch(0.205 0.012 250);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.205 0.012 250);
-  --primary: oklch(0.55 0.105 178);
+  /* 0.53, not 0.55: white text on it must reach 4.5:1 (WCAG AA). */
+  --primary: oklch(0.53 0.105 178);
   --primary-foreground: oklch(0.99 0.012 180);
   --secondary: oklch(0.955 0.006 240);
   --secondary-foreground: oklch(0.28 0.015 250);
@@ -83,7 +84,9 @@
   --muted-foreground: oklch(0.505 0.014 250);
   --accent: oklch(0.951 0.024 182);
   --accent-foreground: oklch(0.34 0.058 182);
-  --destructive: oklch(0.585 0.196 25.5);
+  /* 0.525, not 0.585: red text on its own 10% tint (destructive buttons,
+     the "confirm your email" alert) must reach 4.5:1 (WCAG AA). */
+  --destructive: oklch(0.525 0.196 25.5);
   --positive: oklch(0.52 0.115 150);
   --border: oklch(0.906 0.006 250);
   --input: oklch(0.882 0.007 250);

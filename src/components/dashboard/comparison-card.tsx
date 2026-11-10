@@ -117,7 +117,7 @@ export function ComparisonCard({
                   </span>
                   {/* Each metric is compared between its own readings, so
                       each row says which days those were. */}
-                  <span className="text-muted-foreground/80 text-xs">
+                  <span className="text-muted-foreground text-xs">
                     {date(metric.fromAt)}
                     {" → "}
                     {date(metric.toAt)}
