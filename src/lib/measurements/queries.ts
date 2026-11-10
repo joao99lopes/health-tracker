@@ -86,6 +86,40 @@ export async function listMeasurements(
   return rows.map(toMeasurement);
 }
 
+/** How far back the form looks for "the last value" of each field. */
+const RECENT_FOR_FORM = 200;
+
+/**
+ * Each field's most recent value among the user's latest measurements, or
+ * null when none of them carries it.
+ *
+ * The add form shows these as placeholders and uses them to decide which
+ * fields to show first. Bounded to the latest `RECENT_FOR_FORM` rows so the
+ * cost does not grow with years of history; a field last recorded before
+ * that simply counts as one the user no longer records.
+ */
+export async function latestValuePerField(
+  userId: string,
+): Promise<Record<MeasurementValueField, number | null>> {
+  const rows = await prisma.measurement.findMany({
+    where: { userId },
+    orderBy: { measuredAt: "desc" },
+    take: RECENT_FOR_FORM,
+  });
+  const latest = {} as Record<MeasurementValueField, number | null>;
+  for (const field of MEASUREMENT_VALUE_FIELDS) {
+    latest[field] = null;
+  }
+  for (const row of rows.map(toMeasurement)) {
+    for (const field of MEASUREMENT_VALUE_FIELDS) {
+      if (latest[field] === null && row[field] !== null) {
+        latest[field] = row[field];
+      }
+    }
+  }
+  return latest;
+}
+
 /** The instants (ms since epoch) of every measurement this user has. */
 export async function listMeasurementInstants(
   userId: string,

@@ -322,6 +322,9 @@ export const pt: Dictionary = {
       "Cada medição é registada com a sua altura, para que o IMC se mantenha correto quando a altura mudar. Complete o perfil para começar a registar.",
     goToProfile: "Ir para o perfil",
     values: "Valores",
+    lastValue: (value: string) => `Último: ${value}`,
+    moreValues: (count: number) =>
+      count === 1 ? "Mais 1 valor" : `Mais ${count} valores`,
     note: "Nota",
     noteHint: (max: number) =>
       `Algo que valha a pena lembrar sobre esta leitura. Até ${max} caracteres.`,

@@ -4,6 +4,7 @@ import { ProfileRequiredCard } from "@/components/measurements/profile-required-
 import { PageHeader } from "@/components/page-header";
 import { requireUser } from "@/lib/auth/session";
 import { getTranslations } from "@/lib/i18n/server";
+import { latestValuePerField } from "@/lib/measurements/queries";
 import { getProfile } from "@/lib/profile/queries";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -20,9 +21,10 @@ export async function generateMetadata(): Promise<Metadata> {
  */
 export default async function NewMeasurementPage() {
   const user = await requireUser();
-  const [profile, { t }] = await Promise.all([
+  const [profile, { t }, latestValues] = await Promise.all([
     getProfile(user.id),
     getTranslations(),
+    latestValuePerField(user.id),
   ]);
 
   return (
@@ -35,7 +37,10 @@ export default async function NewMeasurementPage() {
       {profile === null ? (
         <ProfileRequiredCard />
       ) : (
-        <MeasurementForm heightCm={profile.heightCm} />
+        <MeasurementForm
+          heightCm={profile.heightCm}
+          latestValues={latestValues}
+        />
       )}
     </div>
   );

@@ -4,8 +4,13 @@ import { toLocalInputValue } from "./datetime.ts";
 import {
   emptyFormValues,
   formValuesFrom,
+  primaryFields,
   toMeasurementInput,
 } from "./form.ts";
+import {
+  MEASUREMENT_VALUE_FIELDS,
+  type MeasurementValueField,
+} from "./fields.ts";
 import { parseMeasurementInput } from "./validation.ts";
 
 test("a blank form has no values", () => {
@@ -53,4 +58,41 @@ test("the note typed in the form reaches validation", () => {
   );
   const result = parseMeasurementInput(input, new Date(2026, 8, 18, 12, 0));
   assert.equal(result.measurement?.note, "fasted");
+});
+
+// --- which fields lead the form ------------------------------------------------
+
+function recorded(
+  values: Partial<Record<MeasurementValueField, number>>,
+): Record<MeasurementValueField, number | null> {
+  const all = {} as Record<MeasurementValueField, number | null>;
+  for (const field of MEASUREMENT_VALUE_FIELDS) {
+    all[field] = values[field] ?? null;
+  }
+  return all;
+}
+
+test("with no history every field is shown", () => {
+  assert.deepEqual(
+    primaryFields(recorded({}), emptyFormValues()),
+    [...MEASUREMENT_VALUE_FIELDS],
+  );
+});
+
+test("the fields a user records lead, in canonical order", () => {
+  assert.deepEqual(
+    primaryFields(
+      recorded({ abdominalCircumferenceCm: 91, weightKg: 79.6 }),
+      emptyFormValues(),
+    ),
+    ["weightKg", "abdominalCircumferenceCm"],
+  );
+});
+
+test("a field that already holds a value is never hidden", () => {
+  const values = { ...emptyFormValues(), visceralFat: "9" };
+  assert.deepEqual(
+    primaryFields(recorded({ weightKg: 79.6 }), values),
+    ["weightKg", "visceralFat"],
+  );
 });

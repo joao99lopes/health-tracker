@@ -324,6 +324,10 @@ export const en = {
       "A measurement is recorded together with your height, so BMI stays correct as your height changes. Complete your profile to start recording.",
     goToProfile: "Go to profile",
     values: "Values",
+    /** Placeholder: the previous reading of a field, never a pre-filled value. */
+    lastValue: (value: string) => `Last: ${value}`,
+    moreValues: (count: number) =>
+      count === 1 ? "1 more value" : `${count} more values`,
     note: "Note",
     noteHint: (max: number) =>
       `Anything worth remembering about this reading. Up to ${max} characters.`,

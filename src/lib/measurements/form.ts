@@ -63,3 +63,31 @@ export function toMeasurementInput(
     ...values,
   };
 }
+
+/**
+ * Which fields the form shows straight away; the rest wait behind "More
+ * values".
+ *
+ * A person with a basic scale records a weight and nothing else, and seven
+ * empty boxes stand between them and the save button. So the form leads with
+ * the fields this user actually records (`recorded`: a field with a recent
+ * value) plus any field that already holds something, such as one being
+ * edited. Someone who has recorded nothing yet sees everything - there is no
+ * habit to go by, and hiding a field would hide that it exists.
+ *
+ * Order is always the canonical field order, so a field never jumps around.
+ */
+export function primaryFields(
+  recorded: Readonly<Record<MeasurementValueField, number | null>>,
+  values: Readonly<MeasurementFormValues>,
+): MeasurementValueField[] {
+  const anyRecorded = MEASUREMENT_VALUE_FIELDS.some(
+    (field) => recorded[field] !== null,
+  );
+  if (!anyRecorded) {
+    return [...MEASUREMENT_VALUE_FIELDS];
+  }
+  return MEASUREMENT_VALUE_FIELDS.filter(
+    (field) => recorded[field] !== null || values[field].trim() !== "",
+  );
+}

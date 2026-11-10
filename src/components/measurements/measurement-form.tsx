@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
-import { InfoIcon, TriangleAlertIcon } from "lucide-react";
+import { useState, type FormEvent, type KeyboardEvent } from "react";
+import { InfoIcon, PlusIcon, TriangleAlertIcon } from "lucide-react";
 import {
   createMeasurementAction,
   updateMeasurementAction,
@@ -24,10 +24,14 @@ import {
   NOTE_MAX_LENGTH,
   type MeasurementValueField,
 } from "@/lib/measurements/fields";
-import { formatHeightCm } from "@/lib/measurements/format";
+import {
+  formatHeightCm,
+  formatMeasurementNumber,
+} from "@/lib/measurements/format";
 import {
   emptyFormValues,
   formValuesFrom,
+  primaryFields,
   toMeasurementInput,
   type MeasurementFormValues,
 } from "@/lib/measurements/form";
@@ -80,11 +84,18 @@ function FieldIssues({
 export function MeasurementForm({
   measurement,
   heightCm,
+  latestValues,
 }: {
   /** Absent when adding; the row being edited otherwise. */
   measurement?: Measurement;
   /** What will be recorded (adding) or what was recorded (editing). */
   heightCm: number;
+  /**
+   * Adding only: each field's most recent value. Shown as a placeholder -
+   * never filled in, which would record a reading nobody took - and used to
+   * lead with the fields this user records.
+   */
+  latestValues?: Record<MeasurementValueField, number | null>;
 }) {
   const router = useRouter();
   const { t, language } = useI18n();
@@ -117,8 +128,37 @@ export function MeasurementForm({
     null,
   );
 
+  // Fields this user does not record wait behind "More values" until asked
+  // for; editing shows everything the row could hold.
+  const [showAllFields, setShowAllFields] = useState(false);
+  const leadingFields =
+    latestValues === undefined
+      ? MEASUREMENT_VALUE_FIELDS
+      : primaryFields(latestValues, values);
+  const visibleFields = showAllFields ? MEASUREMENT_VALUE_FIELDS : leadingFields;
+  const hiddenCount = MEASUREMENT_VALUE_FIELDS.length - visibleFields.length;
+
   function setValue(field: MeasurementValueField, value: string) {
     setValues((current) => ({ ...current, [field]: value }));
+  }
+
+  /**
+   * Enter moves to the next value, as the phone keyboard's "next" key
+   * promises; on the last one it submits as usual. Typing a weight, a fat
+   * percentage and a waist then never needs a tap between them.
+   */
+  function focusNextOnEnter(
+    event: KeyboardEvent<HTMLInputElement>,
+    field: MeasurementValueField,
+  ) {
+    if (event.key !== "Enter") {
+      return;
+    }
+    const next = visibleFields[visibleFields.indexOf(field) + 1];
+    if (next !== undefined) {
+      event.preventDefault();
+      document.getElementById(next)?.focus();
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -174,7 +214,9 @@ export function MeasurementForm({
           : null;
 
   return (
-    <Card className="[--card-spacing:--spacing(6)]">
+    // `overflow-visible`: the card clips by default, and a clipping ancestor
+    // stops the save bar below from sticking to the viewport.
+    <Card className="overflow-visible [--card-spacing:--spacing(6)]">
       <CardContent>
         <form onSubmit={handleSubmit} className="flex flex-col gap-7" noValidate>
           <div className="flex flex-col gap-2">
@@ -204,7 +246,8 @@ export function MeasurementForm({
               {t.measurements.values}
             </legend>
             <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
-              {MEASUREMENT_VALUE_FIELDS.map((field) => {
+              {visibleFields.map((field, index) => {
+                const latest = latestValues?.[field] ?? null;
                 const help = measurementFieldHelp(t, field);
                 const helpOpen = help !== null && openHelp === field;
                 const describedBy =
@@ -249,6 +292,20 @@ export function MeasurementForm({
                           : "numeric"
                       }
                       autoComplete="off"
+                      // Adding is the quick path: the keyboard opens on the
+                      // first value. Editing starts wherever the reader taps.
+                      autoFocus={!editing && index === 0}
+                      enterKeyHint={
+                        index < visibleFields.length - 1 ? "next" : "done"
+                      }
+                      onKeyDown={(event) => focusNextOnEnter(event, field)}
+                      placeholder={
+                        latest === null
+                          ? undefined
+                          : t.measurements.lastValue(
+                              formatMeasurementNumber(field, latest, language),
+                            )
+                      }
                       aria-invalid={invalid(field) || undefined}
                       aria-describedby={describedBy}
                       value={values[field]}
@@ -267,6 +324,19 @@ export function MeasurementForm({
                 );
               })}
             </div>
+            {hiddenCount > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="self-start"
+                aria-expanded={false}
+                onClick={() => setShowAllFields(true)}
+              >
+                <PlusIcon />
+                {t.measurements.moreValues(hiddenCount)}
+              </Button>
+            )}
           </fieldset>
 
           <div className="flex flex-col gap-2">
@@ -316,9 +386,10 @@ export function MeasurementForm({
             </Alert>
           )}
 
-          {/* Full width and thumb-reachable on a phone; a trailing pair of
-              buttons on a wider screen. */}
-          <div className="border-border flex flex-col-reverse gap-3 border-t pt-6 sm:flex-row sm:justify-end">
+          {/* Full width and thumb-reachable on a phone, where the bar stays
+              pinned just above the bottom navigation so saving never needs
+              a scroll; a trailing pair of buttons on a wider screen. */}
+          <div className="border-border bg-card flex flex-col-reverse gap-2 border-t pt-4 max-sm:sticky max-sm:bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] max-sm:z-20 max-sm:-mx-6 max-sm:rounded-b-xl max-sm:px-6 max-sm:pb-4 sm:flex-row sm:justify-end sm:gap-3 sm:pt-6">
             <Button
               type="button"
               variant="ghost"
