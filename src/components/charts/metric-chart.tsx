@@ -193,6 +193,7 @@ export function MetricChart({
   direction,
   average = null,
   secondary = null,
+  describedBy,
 }: {
   series: MetricSeries;
   /** The reader's preference for this metric; presentation only. */
@@ -201,6 +202,8 @@ export function MetricChart({
   average?: MovingAverageOverlay | null;
   /** A second metric to compare with, when the reader picked one. */
   secondary?: MetricSeries | null;
+  /** The id of a text that says in words what the chart shows. */
+  describedBy?: string;
 }) {
   const { t, language } = useI18n();
   const hydrated = useHydrated();
@@ -264,6 +267,7 @@ export function MetricChart({
       <div
         className={CHART_HEIGHT}
         role="img"
+        aria-describedby={describedBy}
         aria-label={legend.map((item) => item.label).join(", ") + ` — ${t.periods[series.period]}`}
       >
         <ResponsiveContainer width="100%" height="100%">

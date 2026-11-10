@@ -6,6 +6,17 @@
  * interpolated are functions rather than templates with placeholders, which
  * keeps them type-checked and free of a formatting library.
  */
+/** What the chart description is made of, already formatted. */
+export type DescribeChart = {
+  metric: string;
+  period: string;
+  count: number;
+  first: string;
+  last: string;
+  min: string;
+  max: string;
+};
+
 export const en = {
   common: {
     appName: "Health Tracker",
@@ -104,6 +115,10 @@ export const en = {
     compareNone: "None",
     compareNoData: (metric: string) =>
       `${metric} has no recorded value in this period.`,
+    showTable: "Show as table",
+    showChart: "Show as chart",
+    describe: (d: DescribeChart) =>
+      `${d.metric}, ${d.period}: ${d.count === 1 ? "1 reading" : `${d.count} readings`}, from ${d.first} to ${d.last}; lowest ${d.min}, highest ${d.max}.`,
     summary: {
       title: "In this period",
       count: "Readings",

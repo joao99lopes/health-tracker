@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
-import { LineChartIcon } from "lucide-react";
+import { useId, useMemo, useState } from "react";
+import { LineChartIcon, TableIcon } from "lucide-react";
 import { MetricChart } from "@/components/charts/metric-chart";
 import { PeriodSummary } from "@/components/charts/period-summary";
+import { SeriesTable } from "@/components/charts/series-table";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/empty-state";
 import { SectionHeader } from "@/components/page-header";
 import { LocalDateTime } from "@/components/measurements/local-date-time";
@@ -102,7 +104,7 @@ export function EvolutionSection({
   view: Pick<DashboardView, "metric" | "period" | "average" | "compare">;
   onViewChange: (change: Partial<DashboardView>) => void;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { metric, period, average: averageWindow, compare: compareMetric } = view;
   const setMetric = (value: Metric) => onViewChange({ metric: value });
   const setPeriod = (value: PeriodKey) => onViewChange({ period: value });
@@ -129,6 +131,12 @@ export function EvolutionSection({
     [measurements, series, averageWindow],
   );
   const summary = useMemo(() => summarizeSeries(series.points), [series]);
+  // The same readings as a table, for whoever cannot or would rather not
+  // read them off the line. Not kept in the address: it is a way of reading
+  // the chart, not a different chart.
+  const [showTable, setShowTable] = useState(false);
+  const descriptionId = useId();
+  const tableId = useId();
   const secondary = useMemo(
     () =>
       secondaryMetric === null
@@ -282,12 +290,54 @@ export function EvolutionSection({
 
           {hasAnyPoints(series) ? (
             <>
-              <MetricChart
-                series={series}
-                direction={directions[metric]}
-                average={average}
-                secondary={secondary}
-              />
+              {/* What the line shows, in words, for a screen reader; the
+                  table below has every value. */}
+              <p id={descriptionId} className="sr-only">
+                {summary !== null &&
+                  series.first !== null &&
+                  series.current !== null &&
+                  t.charts.describe({
+                    metric: metricLabel(t, metric),
+                    period: t.periods[period],
+                    count: summary.count,
+                    first: formatMetricValue(metric, series.first.value, language),
+                    last: formatMetricValue(metric, series.current.value, language),
+                    min: formatMetricValue(metric, summary.min, language),
+                    max: formatMetricValue(metric, summary.max, language),
+                  })}
+              </p>
+              <div className="flex justify-end print:hidden">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-expanded={showTable}
+                  aria-controls={showTable ? tableId : undefined}
+                  onClick={() => setShowTable((shown) => !shown)}
+                >
+                  {showTable ? <LineChartIcon /> : <TableIcon />}
+                  {showTable ? t.charts.showChart : t.charts.showTable}
+                </Button>
+              </div>
+              {showTable ? (
+                <SeriesTable
+                  id={tableId}
+                  series={series}
+                  secondary={
+                    secondary !== null && hasAnyPoints(secondary)
+                      ? secondary
+                      : null
+                  }
+                />
+              ) : (
+                <MetricChart
+                  series={series}
+                  direction={directions[metric]}
+                  average={average}
+                  secondary={secondary}
+                  describedBy={descriptionId}
+                />
+              )}
               {/* A chosen comparison with nothing to draw says so, rather
                   than silently showing one line. */}
               {secondary !== null && !hasAnyPoints(secondary) && (

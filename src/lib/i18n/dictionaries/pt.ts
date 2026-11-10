@@ -1,4 +1,5 @@
 import type { Dictionary } from "../dictionary.ts";
+import type { DescribeChart } from "./en.ts";
 
 /**
  * European Portuguese catalogue.
@@ -104,6 +105,10 @@ export const pt: Dictionary = {
     compareNone: "Nenhuma",
     compareNoData: (metric: string) =>
       `${metric} não tem valores registados neste período.`,
+    showTable: "Ver como tabela",
+    showChart: "Ver como gráfico",
+    describe: (d: DescribeChart) =>
+      `${d.metric}, ${d.period}: ${d.count === 1 ? "1 leitura" : `${d.count} leituras`}, de ${d.first} a ${d.last}; mínimo ${d.min}, máximo ${d.max}.`,
     summary: {
       title: "Neste período",
       count: "Leituras",
