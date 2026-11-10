@@ -5,7 +5,7 @@ import {
   MEASUREMENT_FIELD_SPECS,
   type MeasurementValueField,
 } from "@/lib/measurements/fields";
-import type { Metric } from "@/lib/measurements/metrics";
+import { metricDisplay, type Metric } from "@/lib/measurements/metrics";
 
 /**
  * Presentation of measurement values and instants.
@@ -115,31 +115,13 @@ export function formatDate(
   }).format(date);
 }
 
-/**
- * The same, for any metric - including the derived BMI and waist-to-height
- * ratio, which have no stored field and therefore no spec of their own.
- */
-function metricUnitAndDecimals(metric: Metric): {
-  unit: string;
-  decimals: number;
-} {
-  if (metric === "bmi") {
-    return { unit: "none", decimals: BMI_DISPLAY_DECIMALS };
-  }
-  if (metric === "waistToHeightRatio") {
-    return { unit: "none", decimals: WAIST_TO_HEIGHT_DISPLAY_DECIMALS };
-  }
-  const spec = MEASUREMENT_FIELD_SPECS[metric];
-  return { unit: spec.unit, decimals: spec.decimals };
-}
-
 /** A metric value as a number, without its unit - for a chart axis. */
 export function formatMetricNumber(
   metric: Metric,
   value: number,
   language: Language,
 ): string {
-  const { decimals } = metricUnitAndDecimals(metric);
+  const { decimals } = metricDisplay(metric);
   return new Intl.NumberFormat(language, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -152,26 +134,33 @@ export function formatMetricValue(
   value: number,
   language: Language,
 ): string {
-  const { unit } = metricUnitAndDecimals(metric);
+  const { unit } = metricDisplay(metric);
   return `${formatMetricNumber(metric, value, language)}${UNIT_SUFFIX[unit] ?? ""}`;
 }
 
 /**
  * A change in a metric, always carrying its sign so a rise and a fall cannot
  * be confused. The sign is a direction, not a verdict.
+ *
+ * A change in a percentage is a difference of percentage *points*, written
+ * with `pointsUnit` ("pp", "p.p."): body fat going from 24.3% to 21.1% is
+ * -3.2 pp, and the relative change printed beside it is -13.2%. Two numbers
+ * both ending in "%" would leave the reader to guess which is which.
  */
 export function formatMetricDelta(
   metric: Metric,
   delta: number,
   language: Language,
+  pointsUnit: string,
 ): string {
-  const { unit, decimals } = metricUnitAndDecimals(metric);
+  const { unit, decimals } = metricDisplay(metric);
   const number = new Intl.NumberFormat(language, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
     signDisplay: "exceptZero",
   }).format(delta);
-  return `${number}${UNIT_SUFFIX[unit] ?? ""}`;
+  const suffix = unit === "%" ? ` ${pointsUnit}` : (UNIT_SUFFIX[unit] ?? "");
+  return `${number}${suffix}`;
 }
 
 /** A relative change, or null when there is none defined (a division by zero). */

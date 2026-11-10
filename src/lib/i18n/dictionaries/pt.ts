@@ -9,6 +9,7 @@ import type { Dictionary } from "../dictionary.ts";
 export const pt: Dictionary = {
   common: {
     appName: "Health Tracker",
+    percentagePoints: "p.p.",
     save: "Guardar",
     saving: "A guardar…",
     signOut: "Terminar sessão",

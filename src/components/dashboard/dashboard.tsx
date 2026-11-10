@@ -160,7 +160,12 @@ function MetricCard({
           >
             <DirectionIcon className="size-3.5 shrink-0" aria-hidden />
             <span>
-              {formatMetricDelta(change.metric, change.delta, language)}
+              {formatMetricDelta(
+                change.metric,
+                change.delta,
+                language,
+                t.common.percentagePoints,
+              )}
             </span>
           </p>
         )}

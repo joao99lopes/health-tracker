@@ -136,7 +136,12 @@ export function ComparisonCard({
                     )}
                   >
                     <Icon className="size-3.5" aria-hidden />
-                    {formatMetricDelta(metric.metric, metric.delta, language)}
+                    {formatMetricDelta(
+                      metric.metric,
+                      metric.delta,
+                      language,
+                      t.common.percentagePoints,
+                    )}
                   </span>
                 </div>
               </li>

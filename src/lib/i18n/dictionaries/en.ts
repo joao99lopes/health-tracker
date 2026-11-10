@@ -9,6 +9,8 @@
 export const en = {
   common: {
     appName: "Health Tracker",
+    /** Suffix of a change between two percentages (percentage points). */
+    percentagePoints: "pp",
     save: "Save",
     saving: "Saving…",
     signOut: "Sign out",

@@ -33,6 +33,30 @@ const at = (iso: string) => new Date(iso);
 
 // --- one pair of readings -------------------------------------------------------
 
+test("a change smaller than the displayed precision is no change", () => {
+  // 91.2 -> 91.0 cm at 176.5 cm: 0.5167 -> 0.5156, shown as 0.52 -> 0.52.
+  const result = compareReadings(
+    "waistToHeightRatio",
+    { at: at("2026-10-21T08:00:00Z"), value: 91.2 / 176.5 },
+    { at: at("2026-11-05T08:00:00Z"), value: 91 / 176.5 },
+  );
+  assert.equal(result.direction, "same");
+  assert.equal(result.delta, 0);
+  assert.ok(Object.is(result.delta, 0), "never -0");
+  // The relative change keeps the exact values.
+  assert.ok(result.percentChange !== null && result.percentChange < 0);
+});
+
+test("the delta is rounded to the metric's precision", () => {
+  const result = compareReadings(
+    "weightKg",
+    { at: at("2026-09-01T08:00:00Z"), value: 79.22 },
+    { at: at("2026-09-18T08:00:00Z"), value: 79.61 },
+  );
+  assert.equal(result.delta, 0.39);
+  assert.equal(result.direction, "up");
+});
+
 test("a comparison reports delta, percentage, direction and both instants", () => {
   const result = compareReadings(
     "weightKg",

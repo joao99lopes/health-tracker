@@ -2,6 +2,7 @@ import { filterByPeriod, type PeriodKey } from "../periods/periods.ts";
 import {
   METRICS,
   metricValue,
+  roundForDisplay,
   sortByMeasuredAt,
   type MeasurementSnapshot,
   type Metric,
@@ -39,7 +40,10 @@ export type MetricComparison = {
   /** When the `from` and `to` readings were taken. */
   fromAt: Date;
   toAt: Date;
-  /** `to - from`. Negative when the value went down. */
+  /**
+   * `to - from`, rounded to the precision the metric is displayed at.
+   * Negative when the value went down.
+   */
   delta: number;
   /** `delta / from` as a percentage, or null when `from` is 0. */
   percentChange: number | null;
@@ -59,13 +63,21 @@ function direction(delta: number): ChangeDirection {
   return "same";
 }
 
-/** Two readings of one metric, compared. */
+/**
+ * Two readings of one metric, compared.
+ *
+ * The difference and its direction are taken at the precision the metric is
+ * shown at. A waist-to-height ratio going from 0.5167 to 0.5156 reads "0.00";
+ * calling that a fall would put an arrow on a number that says nothing moved.
+ * The percentage keeps the exact values - it is printed at its own precision.
+ */
 export function compareReadings(
   metric: Metric,
   earlier: Reading,
   later: Reading,
 ): MetricComparison {
-  const delta = later.value - earlier.value;
+  const delta = roundForDisplay(metric, later.value - earlier.value);
+  const exactDelta = later.value - earlier.value;
   return {
     metric,
     from: earlier.value,
@@ -74,7 +86,8 @@ export function compareReadings(
     toAt: later.at,
     delta,
     // A change from zero has no defined percentage; null rather than Infinity.
-    percentChange: earlier.value === 0 ? null : (delta / earlier.value) * 100,
+    percentChange:
+      earlier.value === 0 ? null : (exactDelta / earlier.value) * 100,
     direction: direction(delta),
   };
 }
