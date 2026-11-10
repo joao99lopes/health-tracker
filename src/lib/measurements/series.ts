@@ -1,5 +1,6 @@
 import { filterByPeriod, type PeriodKey } from "../periods/periods.ts";
 import {
+  metricDisplay,
   metricValue,
   sortByMeasuredAt,
   type MeasurementSnapshot,
@@ -44,32 +45,112 @@ export type MetricSeries = {
   /** The first point of the period, or null when the period holds none. */
   first: SeriesPoint | null;
   /**
-   * The y range to draw, padded a little so a point never sits on the frame.
-   * Null when there is nothing to draw.
+   * The y axis to draw (see `metricAxis`). Null when there is nothing to draw.
    *
    * It is derived from the data, not anchored at zero: a weight that moves
    * between 78 and 80 kg is a readable line here, and a flat one against an
    * axis that starts at zero.
    */
-  domain: [number, number] | null;
+  axis: MetricAxis | null;
+};
+
+/** A series needs two readings before there is any evolution to look at. */
+export const MIN_SERIES_POINTS = 2;
+
+// ---------------------------------------------------------------------------
+// The y axis
+// ---------------------------------------------------------------------------
+
+/** A y axis: the range drawn and the round values labelled on it. */
+export type MetricAxis = {
+  domain: [number, number];
+  /** Ascending, evenly spaced, both ends included. */
+  ticks: number[];
 };
 
 /** How much of the value range to leave above and below the line. */
 const DOMAIN_PADDING = 0.05;
 
-/** A series needs two readings before there is any evolution to look at. */
-export const MIN_SERIES_POINTS = 2;
+/**
+ * The smallest range the y axis ever shows, per metric, in the metric's unit.
+ *
+ * Fitting the axis tightly to the readings makes ordinary scale noise look
+ * like an event: a month of weights between 79.1 and 79.7 kg filled the whole
+ * chart. With a floor on the span, that month reads as the near-flat line it
+ * is, while a real change of several kilos still uses the height it needs.
+ *
+ * These are presentation choices, not physiological thresholds, and they say
+ * nothing about what a change means. Each is roughly what the scale or tape
+ * moves between two readings on the same day, a few times over.
+ */
+const MIN_AXIS_SPAN: Record<Metric, number> = {
+  weightKg: 2,
+  bodyFatPercent: 2,
+  hydrationPercent: 2,
+  musclePercent: 2,
+  boneMassKg: 0.4,
+  visceralFat: 4,
+  abdominalCircumferenceCm: 4,
+  bmi: 1,
+  waistToHeightRatio: 0.04,
+};
 
-export function paddedDomain(values: readonly number[]): [number, number] | null {
+/** About how many intervals the axis is divided into. */
+const TARGET_INTERVALS = 4;
+
+/**
+ * A round step near `raw`: 1, 2 or 5 times a power of ten, and never finer
+ * than the metric's own precision (no "0.25" on a value shown to one
+ * decimal, no fractions on a whole-number index).
+ */
+function niceStep(raw: number, decimals: number): number {
+  const exponent = 10 ** Math.floor(Math.log10(raw));
+  const fraction = raw / exponent;
+  const nice = fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 5 ? 5 : 10;
+  return Math.max(nice * exponent, 10 ** -decimals);
+}
+
+/**
+ * The y axis for one metric's values: centred on the data, at least
+ * `MIN_AXIS_SPAN` tall, widened to round ticks, and never below zero - none
+ * of these metrics can be negative.
+ *
+ * Null when there is nothing to draw.
+ */
+export function metricAxis(
+  metric: Metric,
+  values: readonly number[],
+): MetricAxis | null {
   if (values.length === 0) {
     return null;
   }
+  const { decimals } = metricDisplay(metric);
   const min = Math.min(...values);
   const max = Math.max(...values);
-  // One value, or several identical ones, has no range to pad proportionally.
-  const padding =
-    max === min ? Math.max(Math.abs(max) * DOMAIN_PADDING, 0.5) : (max - min) * DOMAIN_PADDING;
-  return [min - padding, max + padding];
+  const span = Math.max((max - min) * (1 + 2 * DOMAIN_PADDING), MIN_AXIS_SPAN[metric]);
+
+  let low = (min + max) / 2 - span / 2;
+  let high = low + span;
+  if (low < 0) {
+    high -= low;
+    low = 0;
+  }
+
+  const step = niceStep(span / TARGET_INTERVALS, decimals);
+  // Rounding before floor/ceil keeps 78.00000000001 from adding a tick.
+  const clean = (value: number) => Number(value.toFixed(decimals + 3));
+  const start = Math.floor(clean(low / step)) * step;
+  const end = Math.ceil(clean(high / step)) * step;
+
+  const ticks: number[] = [];
+  const count = Math.round((end - start) / step);
+  for (let index = 0; index <= count; index += 1) {
+    ticks.push(Number((start + index * step).toFixed(decimals + 2)));
+  }
+  return {
+    domain: [ticks[0] ?? start, ticks[ticks.length - 1] ?? end],
+    ticks,
+  };
 }
 
 /** Every recorded value of one metric inside one period, oldest first. */
@@ -107,7 +188,10 @@ export function buildMetricSeries(
     current: points[points.length - 1] ?? null,
     previous: points[points.length - 2] ?? null,
     first: points[0] ?? null,
-    domain: paddedDomain(points.map((point) => point.value)),
+    axis: metricAxis(
+      metric,
+      points.map((point) => point.value),
+    ),
   };
 }
 

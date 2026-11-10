@@ -25,7 +25,7 @@ import { metricLabel } from "@/lib/measurements/messages";
 import type { Metric } from "@/lib/measurements/metrics";
 import {
   buildChartRows,
-  paddedDomain,
+  metricAxis,
   type ChartRow,
   type MetricSeries,
   type MovingAverageWindow,
@@ -42,7 +42,11 @@ import { DIRECTION_CHART_COLOR } from "@/components/tone";
  * The series arrives with the unrecorded measurements already removed, so
  * every point on the line is a reading that exists. The y axis is scaled to
  * those readings rather than anchored at zero, which is what makes a two
- * kilo change over a month visible at all. The wash beneath the line is
+ * kilo change over a month visible at all - but never narrower than a
+ * minimum span, with round ticks, so scale noise does not look like an event
+ * (see `metricAxis`). Readings are joined by straight lines: a smoothed curve
+ * would draw peaks and dips between readings that were never measured. The
+ * wash beneath the line is
  * decoration and carries no second value; it fades out well before the axis
  * so it cannot be mistaken for an area measured from zero.
  *
@@ -223,11 +227,12 @@ export function MetricChart({
 
   // The average can sit outside the period's readings - it reaches back
   // before the period - so the left axis spans both.
-  const leftDomain =
-    paddedDomain([
+  const leftAxis =
+    metricAxis(series.metric, [
       ...series.points.map((point) => point.value),
       ...(average?.points.map((point) => point.value) ?? []),
-    ]) ?? series.domain;
+    ]) ?? series.axis;
+  const rightAxis = secondary?.axis ?? null;
 
   const legend = [
     { label: metricLabel(t, series.metric), color },
@@ -296,7 +301,9 @@ export function MetricChart({
             <YAxis
               yAxisId="primary"
               type="number"
-              domain={leftDomain ?? ["dataMin", "dataMax"]}
+              domain={leftAxis?.domain ?? ["dataMin", "dataMax"]}
+              ticks={leftAxis?.ticks}
+              interval={0}
               tickFormatter={(value: number) =>
                 formatMetricNumber(series.metric, value, language)
               }
@@ -312,7 +319,9 @@ export function MetricChart({
                 yAxisId="secondary"
                 orientation="right"
                 type="number"
-                domain={secondary.domain ?? ["dataMin", "dataMax"]}
+                domain={rightAxis?.domain ?? ["dataMin", "dataMax"]}
+                ticks={rightAxis?.ticks}
+                interval={0}
                 tickFormatter={(value: number) =>
                   formatMetricNumber(secondary.metric, value, language)
                 }
@@ -339,7 +348,7 @@ export function MetricChart({
             />
             <Area
               yAxisId="primary"
-              type="monotone"
+              type="linear"
               dataKey="primary"
               stroke={color}
               strokeWidth={2}
@@ -359,7 +368,7 @@ export function MetricChart({
             {average && (
               <Line
                 yAxisId="primary"
-                type="monotone"
+                type="linear"
                 dataKey="average"
                 stroke={color}
                 strokeWidth={1.5}
@@ -373,7 +382,7 @@ export function MetricChart({
             {hasSecondary && secondary && (
               <Line
                 yAxisId="secondary"
-                type="monotone"
+                type="linear"
                 dataKey="secondary"
                 stroke={SECONDARY_COLOR}
                 strokeWidth={2}
