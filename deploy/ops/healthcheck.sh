@@ -13,6 +13,8 @@
 #
 # Usage: deploy/ops/healthcheck.sh && echo OK      (cron: */5 * * * *)
 set -uo pipefail
+# The folder it may create also holds the database dumps of backup.sh.
+umask 077
 
 OPS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEPLOY_DIR="$(dirname "$OPS_DIR")"
